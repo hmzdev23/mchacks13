@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from scipy.spatial import procrustes
 
-from backend.utils.math_helpers import affine_transform
+from utils.math_helpers import affine_transform
 
 
 @dataclass

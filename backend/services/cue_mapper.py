@@ -13,8 +13,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from backend.services.scoring_engine import ScoringEngine
-from backend.utils.math_helpers import compute_angle_at_joint, euclidean_distance
+from services.scoring_engine import ScoringEngine
+from utils.math_helpers import compute_angle_at_joint, euclidean_distance
 
 
 class CueCategory(Enum):
