@@ -91,12 +91,14 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
             res.multiHandLandmarks.forEach((lm: any, idx: number) => {
               const handedness = res.multiHandedness[idx].label as "Left" | "Right";
               const score = res.multiHandedness[idx].score as number;
+              // Mirror X so overlay matches mirrored video feed
+              const mirroredLandmarks = lm.map((p: any) => [1 - p.x, p.y, p.z]);
               const hand: HandLandmarks = {
-                landmarks: lm.map((p: any) => [p.x, p.y, p.z]),
-                handedness: handedness === "Left" ? "Right" : "Left", // mirror camera
+                landmarks: mirroredLandmarks,
+                handedness,
                 score,
               };
-              if (hand.handedness === "Left") leftHand = hand;
+              if (handedness === "Left") leftHand = hand;
               else rightHand = hand;
             });
           }
