@@ -1,58 +1,24 @@
 "use client";
 
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef } from "react";
 
 interface CameraProps {
-  onReady?: (video: HTMLVideoElement) => void;
   mirrored?: boolean;
   className?: string;
+  overlay?: React.ReactNode;
 }
 
-export const Camera = forwardRef<HTMLVideoElement, CameraProps>(({ onReady, mirrored = true, className }, ref) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    const start = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-          audio: false,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setLoading(false);
-          onReady?.(videoRef.current);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Unable to access camera");
-        setLoading(false);
-      }
-    };
-    start();
-    return () => {
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, [onReady]);
-
+export const Camera = forwardRef<HTMLVideoElement, CameraProps>(({ mirrored = true, className, overlay }, ref) => {
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-border ${className ?? ""}`}>
-      {loading && <div className="absolute inset-0 grid place-items-center text-text-secondary text-sm">Starting camera…</div>}
-      {error && <div className="absolute inset-0 grid place-items-center text-error text-sm">{error}</div>}
+    <div className={`relative overflow-hidden rounded-xl border border-border bg-black ${className ?? ""}`}>
       <video
-        ref={(node) => {
-          videoRef.current = node;
-          if (typeof ref === "function") ref(node);
-          else if (ref && node) (ref as any).current = node;
-        }}
+        ref={ref}
         className={`w-full h-full object-cover ${mirrored ? "scale-x-[-1]" : ""}`}
         autoPlay
         playsInline
         muted
       />
+      {overlay ? <div className="absolute inset-0 pointer-events-none">{overlay}</div> : null}
     </div>
   );
 });

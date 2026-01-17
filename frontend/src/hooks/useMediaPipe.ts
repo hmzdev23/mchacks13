@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface HandLandmarks {
   landmarks: number[][];
@@ -25,31 +25,48 @@ const INITIAL_RESULTS: MediaPipeResults = {
 export function useMediaPipe(videoElement: HTMLVideoElement | null) {
   const [results, setResults] = useState<MediaPipeResults>(INITIAL_RESULTS);
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handsRef = useRef<any>(null);
-  const animationRef = useRef<number | null>(null);
-  const lastFrameRef = useRef<number>(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastFpsTimeRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
-  const isInitializedRef = useRef(false);
-  const isDestroyedRef = useRef(false);
 
   useEffect(() => {
-    if (!videoElement || isInitializedRef.current) return;
-
-    isInitializedRef.current = true;
-    isDestroyedRef.current = false;
+    if (!videoElement) return;
+    let cancelled = false;
 
     const init = async () => {
       try {
-        // Dynamic import to avoid SSR issues
-        const handsModule = await import("@mediapipe/hands");
+        // Start or reuse camera stream
+        if (!streamRef.current) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            audio: false,
+          });
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+        }
 
-        if (isDestroyedRef.current) return;
+        videoElement.srcObject = streamRef.current;
+        const playPromise = videoElement.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            /* autoplay may be blocked; will resume on user gesture */
+          });
+        }
 
-        const hands = new handsModule.Hands({
-          locateFile: (file: string) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
+        const { Hands } = await import("@mediapipe/hands");
+        if (cancelled) return;
+
+        const hands = new Hands({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
         });
-
         hands.setOptions({
           maxNumHands: 2,
           modelComplexity: 1,
@@ -58,16 +75,13 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
         });
 
         hands.onResults((res: any) => {
-          if (isDestroyedRef.current) return;
-
+          if (cancelled) return;
           const now = performance.now();
           frameCountRef.current += 1;
-
-          if (now - lastFrameRef.current >= 1000) {
-            const fps = frameCountRef.current;
+          if (now - lastFpsTimeRef.current >= 1000) {
+            setResults((prev) => ({ ...prev, fps: frameCountRef.current }));
             frameCountRef.current = 0;
-            lastFrameRef.current = now;
-            setResults((prev) => ({ ...prev, fps }));
+            lastFpsTimeRef.current = now;
           }
 
           let leftHand: HandLandmarks | null = null;
@@ -79,8 +93,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
               const score = res.multiHandedness[idx].score as number;
               const hand: HandLandmarks = {
                 landmarks: lm.map((p: any) => [p.x, p.y, p.z]),
-                // Mirror the handedness since camera is mirrored
-                handedness: handedness === "Left" ? "Right" : "Left",
+                handedness: handedness === "Left" ? "Right" : "Left", // mirror camera
                 score,
               };
               if (hand.handedness === "Left") leftHand = hand;
@@ -98,68 +111,50 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
 
         handsRef.current = hands;
         setLoading(false);
+        setReady(true);
 
-        // Start detection loop
-        const detect = async () => {
-          if (isDestroyedRef.current || !handsRef.current) return;
-
+        const loop = async () => {
+          if (cancelled) return;
           if (videoElement.readyState >= 2) {
             try {
-              await handsRef.current.send({ image: videoElement });
+              await hands.send({ image: videoElement });
             } catch (err) {
-              // Silently ignore send errors during cleanup
-              if (!isDestroyedRef.current) {
+              if (!cancelled) {
                 console.warn("MediaPipe send warning:", err);
               }
             }
           }
-
-          if (!isDestroyedRef.current) {
-            animationRef.current = requestAnimationFrame(detect);
-          }
+          rafRef.current = requestAnimationFrame(loop);
         };
 
-        // Wait a bit for video to be ready
-        setTimeout(() => {
-          if (!isDestroyedRef.current) {
-            detect();
-          }
-        }, 500);
-
-      } catch (err) {
-        console.error("MediaPipe init error:", err);
-        setLoading(false);
+        loop();
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || "Camera error");
+          setLoading(false);
+        }
       }
     };
 
     init();
 
     return () => {
-      isDestroyedRef.current = true;
-
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
-
-      // Don't call close() immediately - it causes the WASM memory error
-      // Just let it be garbage collected
+      cancelled = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (handsRef.current) {
-        // Delay the cleanup to avoid WASM memory issues
-        const handsToClose = handsRef.current;
+        try {
+          handsRef.current.close();
+        } catch {
+          /* ignore */
+        }
         handsRef.current = null;
-
-        // Use a longer timeout and wrap in try-catch
-        setTimeout(() => {
-          try {
-            handsToClose?.close?.();
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }, 1000);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
     };
   }, [videoElement]);
 
-  return { results, loading };
+  return { results, loading, ready, error };
 }

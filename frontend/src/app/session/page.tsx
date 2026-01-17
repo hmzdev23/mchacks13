@@ -27,11 +27,10 @@ function cueFromTopJoints(top: number[]) {
 
 export default function SessionPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [ready, setReady] = useState(false);
   const [score, setScore] = useState(0);
   const [topErrors, setTopErrors] = useState<number[]>([]);
 
-  const { results, loading } = useMediaPipe(videoRef.current);
+  const { results, loading, ready, error } = useMediaPipe(videoRef.current);
 
   const userHand = useMemo(() => pickHand(results), [results]);
 
@@ -73,12 +72,7 @@ export default function SessionPage() {
 
         <div className="grid lg:grid-cols-[2fr_1fr] gap-6 items-start">
           <div className="rounded-2xl border border-border overflow-hidden bg-white shadow-md relative">
-            <Camera
-              ref={videoRef}
-              onReady={() => setReady(true)}
-              className="aspect-video"
-              mirrored
-            />
+            <Camera ref={videoRef} className="aspect-video" mirrored />
             <OverlayCanvas
               width={1280}
               height={720}
@@ -87,9 +81,13 @@ export default function SessionPage() {
               ghostHand={alignedGhost}
               topErrors={topErrors}
             />
-            {!ready && (
-              <div className="absolute inset-0 grid place-items-center text-text-secondary text-sm bg-white/60 backdrop-blur-sm">
-                Allow camera to start the session…
+            {(!ready || loading || error) && (
+              <div className="absolute inset-0 grid place-items-center text-text-secondary text-sm bg-white/60 backdrop-blur-sm text-center px-4">
+                {error
+                  ? `Camera error: ${error}`
+                  : loading
+                  ? "Starting MediaPipe…"
+                  : "Allow camera to start the session…"}
               </div>
             )}
           </div>
@@ -106,6 +104,7 @@ export default function SessionPage() {
                 <li>FPS: {results.fps || "…"}</li>
                 <li>Hand: {results.rightHand ? "Right" : results.leftHand ? "Left" : "None detected"}</li>
                 <li>Status: {loading ? "Starting MediaPipe…" : ready ? "Live" : "Waiting for camera"}</li>
+                {error ? <li className="text-error">Error: {error}</li> : null}
               </ul>
             </div>
             <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
