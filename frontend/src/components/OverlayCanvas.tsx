@@ -9,6 +9,7 @@ interface OverlayCanvasProps {
   userHand: Point2D[] | null;
   ghostHand: Point2D[] | null;
   topErrors?: number[];
+  ghostOpacity?: number;
   className?: string;
 }
 
@@ -38,7 +39,7 @@ const HAND_CONNECTIONS = [
   [13, 17],
 ];
 
-export function OverlayCanvas({ width, height, userHand, ghostHand, topErrors = [], className }: OverlayCanvasProps) {
+export function OverlayCanvas({ width, height, userHand, ghostHand, topErrors = [], ghostOpacity = 0.6, className }: OverlayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -48,12 +49,13 @@ export function OverlayCanvas({ width, height, userHand, ghostHand, topErrors = 
     if (!ctx) return;
     ctx.clearRect(0, 0, width, height);
 
-    const drawSkeleton = (points: Point2D[], color: string, glow = false) => {
+    const drawSkeleton = (points: Point2D[], color: string, glow = false, alpha = 1) => {
       ctx.save();
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
+      ctx.globalAlpha = alpha;
       if (glow) {
         ctx.shadowBlur = 16;
         ctx.shadowColor = color;
@@ -81,9 +83,9 @@ export function OverlayCanvas({ width, height, userHand, ghostHand, topErrors = 
       });
     };
 
-    if (ghostHand) drawSkeleton(ghostHand, "rgba(41,37,36,0.6)", true);
+    if (ghostHand) drawSkeleton(ghostHand, "rgba(41,37,36,0.9)", true, ghostOpacity);
     if (userHand) drawSkeleton(userHand, "#0f766e");
-  }, [userHand, ghostHand, width, height, topErrors]);
+  }, [userHand, ghostHand, width, height, topErrors, ghostOpacity]);
 
   return <canvas ref={canvasRef} width={width} height={height} className={className} />;
 }
