@@ -1,1 +1,0 @@
-# SecondHand backend package
