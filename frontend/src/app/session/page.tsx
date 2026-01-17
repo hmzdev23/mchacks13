@@ -29,7 +29,10 @@ export default function SessionPage() {
     Right: new ScoringEngine(),
   });
 
-  const { results, loading, ready, error } = useMediaPipe(videoRef.current);
+  const { results, loading, ready, error } = useMediaPipe(videoRef.current, {
+    swapHandedness: true,
+    minHandScore: 0.6,
+  });
   const { width, height } = useElementSize(frameRef.current);
   const { width: videoWidth, height: videoHeight } = useVideoMetrics(videoRef.current);
 
@@ -45,9 +48,8 @@ export default function SessionPage() {
   const hands = useMemo(() => {
     const entries: { side: "Left" | "Right"; points: Point2D[]; score: number }[] = [];
     if (leftHand && results.leftHand) entries.push({ side: "Left", points: leftHand, score: results.leftHand.score });
-    if (rightHand && results.rightHand)
-      entries.push({ side: "Right", points: rightHand, score: results.rightHand.score });
-    return entries.sort((a, b) => b.score - a.score);
+    if (rightHand && results.rightHand) entries.push({ side: "Right", points: rightHand, score: results.rightHand.score });
+    return entries;
   }, [leftHand, rightHand, results]);
 
   const ghostHands = useMemo(
@@ -67,12 +69,11 @@ export default function SessionPage() {
       setTopErrors([]);
       return;
     }
-    const scores = hands.map((hand, idx) =>
-      scoringRef.current[hand.side].score(hand.points, ghostHands[idx])
-    );
+    const scores = hands.map((hand, idx) => scoringRef.current[hand.side].score(hand.points, ghostHands[idx]));
     const avgScore = scores.reduce((acc, s) => acc + s.overall, 0) / scores.length;
     setScore(avgScore);
-    setTopErrors(scores[0]?.topJoints ?? []);
+    const primaryIndex = hands.findIndex((hand) => hand.side === "Left");
+    setTopErrors(scores[primaryIndex >= 0 ? primaryIndex : 0]?.topJoints ?? []);
   }, [hands, ghostHands]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);

@@ -22,7 +22,13 @@ const INITIAL_RESULTS: MediaPipeResults = {
   fps: 0,
 };
 
-export function useMediaPipe(videoElement: HTMLVideoElement | null) {
+interface UseMediaPipeOptions {
+  swapHandedness?: boolean;
+  minHandScore?: number;
+}
+
+export function useMediaPipe(videoElement: HTMLVideoElement | null, options: UseMediaPipeOptions = {}) {
+  const { swapHandedness = true, minHandScore = 0.55 } = options;
   const [results, setResults] = useState<MediaPipeResults>(INITIAL_RESULTS);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
@@ -33,6 +39,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
   const rafRef = useRef<number | null>(null);
   const lastFpsTimeRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
+  const fpsRef = useRef<number>(0);
 
   useEffect(() => {
     if (!videoElement) return;
@@ -85,7 +92,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
           const now = performance.now();
           frameCountRef.current += 1;
           if (now - lastFpsTimeRef.current >= 1000) {
-            setResults((prev) => ({ ...prev, fps: frameCountRef.current }));
+            fpsRef.current = frameCountRef.current;
             frameCountRef.current = 0;
             lastFpsTimeRef.current = now;
           }
@@ -97,12 +104,14 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
             res.multiHandLandmarks.forEach((lm: any, idx: number) => {
               const handedness = res.multiHandedness[idx].label as "Left" | "Right";
               const score = res.multiHandedness[idx].score as number;
+              if (score < minHandScore) return;
+              const label = swapHandedness ? (handedness === "Left" ? "Right" : "Left") : handedness;
               const hand: HandLandmarks = {
                 landmarks: lm.map((p: any) => [p.x, p.y, p.z]),
-                handedness,
+                handedness: label,
                 score,
               };
-              if (handedness === "Left") leftHand = hand;
+              if (label === "Left") leftHand = hand;
               else rightHand = hand;
             });
           }
@@ -111,7 +120,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
             leftHand,
             rightHand,
             timestamp: Date.now(),
-            fps: prev.fps,
+            fps: fpsRef.current || prev.fps,
           }));
         });
 
@@ -160,7 +169,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
         streamRef.current = null;
       }
     };
-  }, [videoElement]);
+  }, [videoElement, swapHandedness, minHandScore]);
 
   return { results, loading, ready, error };
 }
