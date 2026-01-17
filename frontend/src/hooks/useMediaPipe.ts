@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export interface HandLandmarks {
   landmarks: number[][];
@@ -15,104 +15,149 @@ export interface MediaPipeResults {
   fps: number;
 }
 
+const INITIAL_RESULTS: MediaPipeResults = {
+  leftHand: null,
+  rightHand: null,
+  timestamp: 0,
+  fps: 0,
+};
+
 export function useMediaPipe(videoElement: HTMLVideoElement | null) {
-  const [results, setResults] = useState<MediaPipeResults>({
-    leftHand: null,
-    rightHand: null,
-    timestamp: 0,
-    fps: 0,
-  });
+  const [results, setResults] = useState<MediaPipeResults>(INITIAL_RESULTS);
   const [loading, setLoading] = useState(true);
   const handsRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
+  const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
-  const cancellingRef = useRef(false);
+  const isInitializedRef = useRef(false);
+  const isDestroyedRef = useRef(false);
 
   useEffect(() => {
-    if (!videoElement) return;
+    if (!videoElement || isInitializedRef.current) return;
 
-    let cancelled = false;
-    cancellingRef.current = false;
+    isInitializedRef.current = true;
+    isDestroyedRef.current = false;
 
     const init = async () => {
-      const { Hands } = await import("@mediapipe/hands");
-      const { Camera } = await import("@mediapipe/camera_utils");
+      try {
+        // Dynamic import to avoid SSR issues
+        const handsModule = await import("@mediapipe/hands");
 
-      const hands = new Hands({
-        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-      });
-      hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.5,
-      });
+        if (isDestroyedRef.current) return;
 
-      hands.onResults((res: any) => {
-        if (cancellingRef.current) return;
-        const now = performance.now();
-        frameCountRef.current += 1;
-        if (now - lastFrameRef.current >= 1000) {
-          setResults((prev) => ({ ...prev, fps: frameCountRef.current }));
-          frameCountRef.current = 0;
-          lastFrameRef.current = now;
-        }
+        const hands = new handsModule.Hands({
+          locateFile: (file: string) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
+        });
 
-        let leftHand: HandLandmarks | null = null;
-        let rightHand: HandLandmarks | null = null;
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5,
+        });
 
-        if (res.multiHandLandmarks && res.multiHandedness) {
-          res.multiHandLandmarks.forEach((lm: any, idx: number) => {
-            const handedness = res.multiHandedness[idx].label as "Left" | "Right";
-            const score = res.multiHandedness[idx].score as number;
-            const hand = {
-              landmarks: lm.map((p: any) => [p.x, p.y, p.z]),
-              handedness: handedness === "Left" ? "Right" : "Left", // camera mirror
-              score,
-            };
-            if (hand.handedness === "Left") leftHand = hand;
-            else rightHand = hand;
-          });
-        }
+        hands.onResults((res: any) => {
+          if (isDestroyedRef.current) return;
 
-        if (!cancelled) {
+          const now = performance.now();
+          frameCountRef.current += 1;
+
+          if (now - lastFrameRef.current >= 1000) {
+            const fps = frameCountRef.current;
+            frameCountRef.current = 0;
+            lastFrameRef.current = now;
+            setResults((prev) => ({ ...prev, fps }));
+          }
+
+          let leftHand: HandLandmarks | null = null;
+          let rightHand: HandLandmarks | null = null;
+
+          if (res.multiHandLandmarks && res.multiHandedness) {
+            res.multiHandLandmarks.forEach((lm: any, idx: number) => {
+              const handedness = res.multiHandedness[idx].label as "Left" | "Right";
+              const score = res.multiHandedness[idx].score as number;
+              const hand: HandLandmarks = {
+                landmarks: lm.map((p: any) => [p.x, p.y, p.z]),
+                // Mirror the handedness since camera is mirrored
+                handedness: handedness === "Left" ? "Right" : "Left",
+                score,
+              };
+              if (hand.handedness === "Left") leftHand = hand;
+              else rightHand = hand;
+            });
+          }
+
           setResults({
             leftHand,
             rightHand,
             timestamp: Date.now(),
-            fps: frameCountRef.current || results.fps,
+            fps: frameCountRef.current,
           });
-        }
-      });
+        });
 
-      const camera = new Camera(videoElement, {
-        onFrame: async () => {
-          // Avoid sending frames until the video element has data
-          if (!videoElement || videoElement.readyState < 2) return;
-          try {
-            await hands.send({ image: videoElement });
-          } catch (err) {
-            console.error("MediaPipe send error", err);
+        handsRef.current = hands;
+        setLoading(false);
+
+        // Start detection loop
+        const detect = async () => {
+          if (isDestroyedRef.current || !handsRef.current) return;
+
+          if (videoElement.readyState >= 2) {
+            try {
+              await handsRef.current.send({ image: videoElement });
+            } catch (err) {
+              // Silently ignore send errors during cleanup
+              if (!isDestroyedRef.current) {
+                console.warn("MediaPipe send warning:", err);
+              }
+            }
           }
-        },
-        width: 1280,
-        height: 720,
-      });
 
-      handsRef.current = hands;
-      cameraRef.current = camera;
-      camera.start();
-      setLoading(false);
+          if (!isDestroyedRef.current) {
+            animationRef.current = requestAnimationFrame(detect);
+          }
+        };
+
+        // Wait a bit for video to be ready
+        setTimeout(() => {
+          if (!isDestroyedRef.current) {
+            detect();
+          }
+        }, 500);
+
+      } catch (err) {
+        console.error("MediaPipe init error:", err);
+        setLoading(false);
+      }
     };
 
     init();
 
     return () => {
-      cancellingRef.current = true;
-      cancelled = true;
-      handsRef.current?.close();
-      cameraRef.current?.stop();
+      isDestroyedRef.current = true;
+
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+
+      // Don't call close() immediately - it causes the WASM memory error
+      // Just let it be garbage collected
+      if (handsRef.current) {
+        // Delay the cleanup to avoid WASM memory issues
+        const handsToClose = handsRef.current;
+        handsRef.current = null;
+
+        // Use a longer timeout and wrap in try-catch
+        setTimeout(() => {
+          try {
+            handsToClose?.close?.();
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }, 1000);
+      }
     };
   }, [videoElement]);
 

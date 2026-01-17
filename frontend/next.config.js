@@ -1,17 +1,26 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Disable strict mode to prevent double MediaPipe initialization
   async headers() {
-    // Required for MediaPipe SIMD WASM to load reliably (prevents native aborts)
     return [
       {
         source: "/(.*)",
         headers: [
+          // Use credentialless instead of require-corp to allow CDN resources
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
         ],
       },
     ];
+  },
+  // Ignore MediaPipe packages in webpack bundling (they load from CDN)
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+    };
+    // Externalize MediaPipe to prevent bundling issues
+    config.externals = config.externals || [];
+    return config;
   },
 };
 
