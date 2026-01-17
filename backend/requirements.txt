@@ -1,0 +1,19 @@
+# Core
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.5.0
+
+# Computer Vision
+mediapipe>=0.10.9
+opencv-python>=4.9.0
+numpy>=1.25.0
+
+# Scientific computing
+scipy>=1.11.0
+
+# Storage
+boto3>=1.34.0  # For DigitalOcean Spaces (S3-compatible)
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
