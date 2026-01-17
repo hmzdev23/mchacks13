@@ -5,18 +5,12 @@ import Link from "next/link";
 import { Camera } from "@/components/Camera";
 import { OverlayCanvas } from "@/components/OverlayCanvas";
 import { ScoreMeter } from "@/components/ScoreMeter";
+import { useElementSize } from "@/hooks/useElementSize";
+import { useVideoMetrics } from "@/hooks/useVideoMetrics";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { alignHands, Point2D } from "@/lib/cv/alignment";
 import { ScoringEngine } from "@/lib/cv/scoring";
-import { expertHand } from "@/lib/packs/sampleExpert";
-
-const scoringEngine = new ScoringEngine();
-
-function pickHand(results: ReturnType<typeof useMediaPipe>["results"]): Point2D[] | null {
-  const hand = results.rightHand ?? results.leftHand;
-  if (!hand) return null;
-  return hand.landmarks.map(([x, y]) => [x, y] as Point2D);
-}
+import { expertHandLeft, expertHandRight } from "@/lib/packs/sampleExpert";
 
 function cueFromTopJoints(top: number[]) {
   if (top.includes(8) || top.includes(12)) return "Open fingers slightly wider.";
@@ -27,30 +21,59 @@ function cueFromTopJoints(top: number[]) {
 
 export default function SessionPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const [score, setScore] = useState(0);
   const [topErrors, setTopErrors] = useState<number[]>([]);
+  const scoringRef = useRef<{ Left: ScoringEngine; Right: ScoringEngine }>({
+    Left: new ScoringEngine(),
+    Right: new ScoringEngine(),
+  });
 
   const { results, loading, ready, error } = useMediaPipe(videoRef.current);
+  const { width, height } = useElementSize(frameRef.current);
+  const { width: videoWidth, height: videoHeight } = useVideoMetrics(videoRef.current);
 
-  const userHand = useMemo(() => pickHand(results), [results]);
+  const leftHand = useMemo(
+    () => (results.leftHand ? results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    [results]
+  );
+  const rightHand = useMemo(
+    () => (results.rightHand ? results.rightHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    [results]
+  );
 
-  const { alignedGhost, liveHand } = useMemo(() => {
-    if (!userHand) return { alignedGhost: null, liveHand: null };
-    const aligned = alignHands(expertHand, userHand);
-    return { alignedGhost: aligned.alignedExpert, liveHand: userHand };
-  }, [userHand]);
+  const hands = useMemo(() => {
+    const entries: { side: "Left" | "Right"; points: Point2D[]; score: number }[] = [];
+    if (leftHand && results.leftHand) entries.push({ side: "Left", points: leftHand, score: results.leftHand.score });
+    if (rightHand && results.rightHand)
+      entries.push({ side: "Right", points: rightHand, score: results.rightHand.score });
+    return entries.sort((a, b) => b.score - a.score);
+  }, [leftHand, rightHand, results]);
+
+  const ghostHands = useMemo(
+    () =>
+      hands.map((hand) =>
+        alignHands(hand.side === "Left" ? expertHandLeft : expertHandRight, hand.points).alignedExpert
+      ),
+    [hands]
+  );
+  const userHands = useMemo(() => hands.map((hand) => hand.points), [hands]);
 
   useEffect(() => {
-    if (!liveHand || !alignedGhost) {
-      scoringEngine.reset();
+    if (!hands.length || !ghostHands.length) {
+      scoringRef.current.Left.reset();
+      scoringRef.current.Right.reset();
       setScore(0);
       setTopErrors([]);
       return;
     }
-    const res = scoringEngine.score(liveHand, alignedGhost);
-    setScore(res.overall);
-    setTopErrors(res.topJoints);
-  }, [liveHand, alignedGhost]);
+    const scores = hands.map((hand, idx) =>
+      scoringRef.current[hand.side].score(hand.points, ghostHands[idx])
+    );
+    const avgScore = scores.reduce((acc, s) => acc + s.overall, 0) / scores.length;
+    setScore(avgScore);
+    setTopErrors(scores[0]?.topJoints ?? []);
+  }, [hands, ghostHands]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
 
@@ -71,14 +94,17 @@ export default function SessionPage() {
         </div>
 
         <div className="grid lg:grid-cols-[2fr_1fr] gap-6 items-start">
-          <div className="rounded-2xl border border-border overflow-hidden bg-white shadow-md relative">
+          <div ref={frameRef} className="rounded-2xl border border-border overflow-hidden bg-white shadow-md relative">
             <Camera ref={videoRef} className="aspect-video" mirrored />
             <OverlayCanvas
-              width={1280}
-              height={720}
+              width={width}
+              height={height}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
               className="absolute inset-0"
-              userHand={liveHand}
-              ghostHand={alignedGhost}
+              userHands={userHands}
+              ghostHands={ghostHands}
+              mirror
               topErrors={topErrors}
             />
             {(!ready || loading || error) && (
@@ -102,7 +128,14 @@ export default function SessionPage() {
               <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">Tracking</p>
               <ul className="text-sm text-text-secondary space-y-1">
                 <li>FPS: {results.fps || "…"}</li>
-                <li>Hand: {results.rightHand ? "Right" : results.leftHand ? "Left" : "None detected"}</li>
+                <li>
+                  Hands:{" "}
+                  {results.leftHand || results.rightHand
+                    ? [results.leftHand ? "Left" : null, results.rightHand ? "Right" : null]
+                        .filter(Boolean)
+                        .join(" + ")
+                    : "None detected"}
+                </li>
                 <li>Status: {loading ? "Starting MediaPipe…" : ready ? "Live" : "Waiting for camera"}</li>
                 {error ? <li className="text-error">Error: {error}</li> : null}
               </ul>

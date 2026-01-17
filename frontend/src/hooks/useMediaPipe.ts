@@ -43,7 +43,12 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
         // Start or reuse camera stream
         if (!streamRef.current) {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              aspectRatio: 16 / 9,
+              frameRate: { ideal: 30 },
+            },
             audio: false,
           });
           if (cancelled) {
@@ -70,6 +75,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
         hands.setOptions({
           maxNumHands: 2,
           modelComplexity: 1,
+          selfieMode: false,
           minDetectionConfidence: 0.7,
           minTrackingConfidence: 0.5,
         });
@@ -91,10 +97,8 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
             res.multiHandLandmarks.forEach((lm: any, idx: number) => {
               const handedness = res.multiHandedness[idx].label as "Left" | "Right";
               const score = res.multiHandedness[idx].score as number;
-              // Mirror X so overlay matches mirrored video feed
-              const mirroredLandmarks = lm.map((p: any) => [1 - p.x, p.y, p.z]);
               const hand: HandLandmarks = {
-                landmarks: mirroredLandmarks,
+                landmarks: lm.map((p: any) => [p.x, p.y, p.z]),
                 handedness,
                 score,
               };
@@ -103,12 +107,12 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
             });
           }
 
-          setResults({
+          setResults((prev) => ({
             leftHand,
             rightHand,
             timestamp: Date.now(),
-            fps: frameCountRef.current,
-          });
+            fps: prev.fps,
+          }));
         });
 
         handsRef.current = hands;
