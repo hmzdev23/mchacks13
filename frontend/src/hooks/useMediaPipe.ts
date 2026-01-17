@@ -27,11 +27,13 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
   const cameraRef = useRef<any>(null);
   const lastFrameRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
+  const cancellingRef = useRef(false);
 
   useEffect(() => {
     if (!videoElement) return;
 
     let cancelled = false;
+    cancellingRef.current = false;
 
     const init = async () => {
       const { Hands } = await import("@mediapipe/hands");
@@ -48,6 +50,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
       });
 
       hands.onResults((res: any) => {
+        if (cancellingRef.current) return;
         const now = performance.now();
         frameCountRef.current += 1;
         if (now - lastFrameRef.current >= 1000) {
@@ -78,14 +81,20 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
             leftHand,
             rightHand,
             timestamp: Date.now(),
-            fps: res.image?.currentTime ? Math.round(1 / res.image.currentTime) : results.fps,
+            fps: frameCountRef.current || results.fps,
           });
         }
       });
 
       const camera = new Camera(videoElement, {
         onFrame: async () => {
-          await hands.send({ image: videoElement });
+          // Avoid sending frames until the video element has data
+          if (!videoElement || videoElement.readyState < 2) return;
+          try {
+            await hands.send({ image: videoElement });
+          } catch (err) {
+            console.error("MediaPipe send error", err);
+          }
         },
         width: 1280,
         height: 720,
@@ -100,6 +109,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null) {
     init();
 
     return () => {
+      cancellingRef.current = true;
       cancelled = true;
       handsRef.current?.close();
       cameraRef.current?.stop();

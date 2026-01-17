@@ -42,7 +42,12 @@ export default function SessionPage() {
   }, [userHand]);
 
   useEffect(() => {
-    if (!liveHand || !alignedGhost) return;
+    if (!liveHand || !alignedGhost) {
+      scoringEngine.reset();
+      setScore(0);
+      setTopErrors([]);
+      return;
+    }
     const res = scoringEngine.score(liveHand, alignedGhost);
     setScore(res.overall);
     setTopErrors(res.topJoints);
