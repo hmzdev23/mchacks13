@@ -28,13 +28,19 @@ class FingerSpec:
     spread: float
 
 
-def build_finger(spec: FingerSpec, curl: float) -> List[Point]:
+FINGER_BENDS = (0.6, 1.05, 1.25)
+THUMB_BENDS = (0.5, 0.8, 1.0)
+
+
+def build_finger(spec: FingerSpec, curl: float, splay: float = 0.0) -> List[Point]:
     """Build a finger chain (MCP, PIP, DIP, TIP) in 2D."""
     curl = max(0.0, min(1.0, curl))
+    curl = 0.08 + 0.92 * curl
+    base_angle = spec.base_angle + spec.spread + splay
     angles = [
-        spec.base_angle - curl * 1.1 + spec.spread,
-        spec.base_angle - curl * 1.35 + spec.spread,
-        spec.base_angle - curl * 1.55 + spec.spread,
+        base_angle + curl * FINGER_BENDS[0],
+        base_angle + curl * FINGER_BENDS[1],
+        base_angle + curl * FINGER_BENDS[2],
     ]
     points = [spec.base]
     x, y = spec.base
@@ -45,13 +51,14 @@ def build_finger(spec: FingerSpec, curl: float) -> List[Point]:
     return points
 
 
-def build_thumb(base: Point, lengths: Tuple[float, float, float], curl: float) -> List[Point]:
+def build_thumb(base: Point, lengths: Tuple[float, float, float], curl: float, splay: float = 0.0) -> List[Point]:
     curl = max(0.0, min(1.0, curl))
-    base_angle = -0.3 + curl * 0.9
+    curl = 0.1 + 0.9 * curl
+    base_angle = -0.75 + splay + curl * 0.65
     angles = [
-        base_angle,
-        base_angle + 0.15 + curl * 0.6,
-        base_angle + 0.25 + curl * 0.8,
+        base_angle + curl * THUMB_BENDS[0],
+        base_angle + curl * THUMB_BENDS[1],
+        base_angle + curl * THUMB_BENDS[2],
     ]
     points = [base]
     x, y = base
@@ -75,20 +82,26 @@ def rotate(points: List[Point], origin: Point, angle: float) -> List[Point]:
     return rotated
 
 
-def build_hand_pose(curls: Dict[str, float], rotation: float = 0.0) -> List[Point]:
-    wrist = (0.5, 0.78)
-    index = FingerSpec(base=(0.46, 0.62), lengths=(0.18, 0.12, 0.1), base_angle=-1.55, spread=-0.05)
-    middle = FingerSpec(base=(0.5, 0.6), lengths=(0.19, 0.13, 0.11), base_angle=-1.57, spread=0.0)
-    ring = FingerSpec(base=(0.54, 0.62), lengths=(0.17, 0.12, 0.1), base_angle=-1.6, spread=0.04)
-    pinky = FingerSpec(base=(0.58, 0.64), lengths=(0.15, 0.1, 0.08), base_angle=-1.7, spread=0.08)
+def build_hand_pose(
+    curls: Dict[str, float],
+    rotation: float = 0.0,
+    spreads: Dict[str, float] | None = None,
+    thumb_splay: float = 0.0,
+) -> List[Point]:
+    spreads = spreads or {}
+    wrist = (0.5, 0.82)
+    index = FingerSpec(base=(0.46, 0.64), lengths=(0.17, 0.11, 0.08), base_angle=-1.52, spread=-0.05)
+    middle = FingerSpec(base=(0.5, 0.62), lengths=(0.19, 0.12, 0.09), base_angle=-1.55, spread=0.0)
+    ring = FingerSpec(base=(0.54, 0.64), lengths=(0.17, 0.11, 0.08), base_angle=-1.58, spread=0.05)
+    pinky = FingerSpec(base=(0.59, 0.67), lengths=(0.14, 0.09, 0.07), base_angle=-1.62, spread=0.1)
 
-    thumb_base = (0.42, 0.7)
+    thumb_base = (0.39, 0.75)
 
-    thumb_points = build_thumb(thumb_base, (0.12, 0.09, 0.07), curls["thumb"])
-    index_points = build_finger(index, curls["index"])
-    middle_points = build_finger(middle, curls["middle"])
-    ring_points = build_finger(ring, curls["ring"])
-    pinky_points = build_finger(pinky, curls["pinky"])
+    thumb_points = build_thumb(thumb_base, (0.13, 0.09, 0.07), curls["thumb"], splay=thumb_splay)
+    index_points = build_finger(index, curls["index"], spreads.get("index", 0.0))
+    middle_points = build_finger(middle, curls["middle"], spreads.get("middle", 0.0))
+    ring_points = build_finger(ring, curls["ring"], spreads.get("ring", 0.0))
+    pinky_points = build_finger(pinky, curls["pinky"], spreads.get("pinky", 0.0))
 
     # Assemble MediaPipe order
     points = [wrist]
@@ -138,32 +151,47 @@ def main():
     fps = 30
 
     letters = {
-        "letter-a": {"thumb": 0.2, "index": 1.0, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-b": {"thumb": 1.0, "index": 0.0, "middle": 0.0, "ring": 0.0, "pinky": 0.0},
-        "letter-c": {"thumb": 0.4, "index": 0.4, "middle": 0.4, "ring": 0.4, "pinky": 0.4},
-        "letter-d": {"thumb": 0.6, "index": 0.0, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-e": {"thumb": 0.7, "index": 0.8, "middle": 0.8, "ring": 0.8, "pinky": 0.8},
-        "letter-f": {"thumb": 0.2, "index": 0.2, "middle": 0.0, "ring": 0.0, "pinky": 0.0},
-        "letter-g": {"thumb": 0.3, "index": 0.2, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-h": {"thumb": 0.4, "index": 0.0, "middle": 0.0, "ring": 1.0, "pinky": 1.0},
-        "letter-i": {"thumb": 0.7, "index": 1.0, "middle": 1.0, "ring": 1.0, "pinky": 0.0},
-        "letter-j": {"thumb": 0.7, "index": 1.0, "middle": 1.0, "ring": 1.0, "pinky": 0.0},
-        "letter-k": {"thumb": 0.2, "index": 0.0, "middle": 0.1, "ring": 1.0, "pinky": 1.0},
-        "letter-l": {"thumb": 0.0, "index": 0.0, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-m": {"thumb": 0.9, "index": 0.9, "middle": 0.9, "ring": 1.0, "pinky": 1.0},
-        "letter-n": {"thumb": 0.9, "index": 0.9, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
+        "letter-a": {"thumb": 0.35, "index": 0.95, "middle": 0.95, "ring": 0.95, "pinky": 0.95},
+        "letter-b": {"thumb": 0.75, "index": 0.05, "middle": 0.05, "ring": 0.05, "pinky": 0.08},
+        "letter-c": {"thumb": 0.4, "index": 0.45, "middle": 0.45, "ring": 0.5, "pinky": 0.55},
+        "letter-d": {"thumb": 0.5, "index": 0.05, "middle": 0.9, "ring": 0.9, "pinky": 0.9},
+        "letter-e": {"thumb": 0.75, "index": 0.85, "middle": 0.85, "ring": 0.85, "pinky": 0.85},
+        "letter-f": {"thumb": 0.35, "index": 0.35, "middle": 0.05, "ring": 0.05, "pinky": 0.05},
+        "letter-g": {"thumb": 0.25, "index": 0.05, "middle": 0.9, "ring": 0.9, "pinky": 0.9},
+        "letter-h": {"thumb": 0.35, "index": 0.05, "middle": 0.05, "ring": 0.9, "pinky": 0.9},
+        "letter-i": {"thumb": 0.7, "index": 0.95, "middle": 0.95, "ring": 0.95, "pinky": 0.05},
+        "letter-j": {"thumb": 0.7, "index": 0.95, "middle": 0.95, "ring": 0.95, "pinky": 0.05},
+        "letter-k": {"thumb": 0.2, "index": 0.05, "middle": 0.1, "ring": 0.9, "pinky": 0.9},
+        "letter-l": {"thumb": 0.05, "index": 0.05, "middle": 0.95, "ring": 0.95, "pinky": 0.95},
+        "letter-m": {"thumb": 0.95, "index": 0.9, "middle": 0.9, "ring": 0.9, "pinky": 0.7},
+        "letter-n": {"thumb": 0.95, "index": 0.9, "middle": 0.9, "ring": 0.95, "pinky": 0.95},
         "letter-o": {"thumb": 0.6, "index": 0.6, "middle": 0.6, "ring": 0.6, "pinky": 0.6},
-        "letter-p": {"thumb": 0.2, "index": 0.2, "middle": 0.0, "ring": 1.0, "pinky": 1.0},
-        "letter-q": {"thumb": 0.3, "index": 0.3, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-r": {"thumb": 0.5, "index": 0.0, "middle": 0.0, "ring": 1.0, "pinky": 1.0},
-        "letter-s": {"thumb": 0.9, "index": 1.0, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-t": {"thumb": 0.85, "index": 0.95, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-u": {"thumb": 0.4, "index": 0.0, "middle": 0.0, "ring": 1.0, "pinky": 1.0},
-        "letter-v": {"thumb": 0.3, "index": 0.0, "middle": 0.0, "ring": 1.0, "pinky": 1.0},
-        "letter-w": {"thumb": 0.3, "index": 0.0, "middle": 0.0, "ring": 0.0, "pinky": 1.0},
-        "letter-x": {"thumb": 0.6, "index": 0.7, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
-        "letter-y": {"thumb": 0.0, "index": 1.0, "middle": 1.0, "ring": 1.0, "pinky": 0.0},
-        "letter-z": {"thumb": 0.6, "index": 0.0, "middle": 1.0, "ring": 1.0, "pinky": 1.0},
+        "letter-p": {"thumb": 0.2, "index": 0.2, "middle": 0.05, "ring": 0.9, "pinky": 0.9},
+        "letter-q": {"thumb": 0.3, "index": 0.25, "middle": 0.95, "ring": 0.95, "pinky": 0.95},
+        "letter-r": {"thumb": 0.5, "index": 0.1, "middle": 0.1, "ring": 0.9, "pinky": 0.9},
+        "letter-s": {"thumb": 0.85, "index": 0.98, "middle": 0.98, "ring": 0.98, "pinky": 0.98},
+        "letter-t": {"thumb": 0.8, "index": 0.95, "middle": 0.95, "ring": 0.95, "pinky": 0.95},
+        "letter-u": {"thumb": 0.45, "index": 0.05, "middle": 0.05, "ring": 0.9, "pinky": 0.9},
+        "letter-v": {"thumb": 0.4, "index": 0.05, "middle": 0.05, "ring": 0.9, "pinky": 0.9},
+        "letter-w": {"thumb": 0.4, "index": 0.05, "middle": 0.05, "ring": 0.05, "pinky": 0.9},
+        "letter-x": {"thumb": 0.6, "index": 0.7, "middle": 0.95, "ring": 0.95, "pinky": 0.95},
+        "letter-y": {"thumb": 0.05, "index": 0.95, "middle": 0.95, "ring": 0.95, "pinky": 0.05},
+        "letter-z": {"thumb": 0.6, "index": 0.05, "middle": 0.95, "ring": 0.95, "pinky": 0.95},
+    }
+
+    letter_spreads = {
+        "letter-k": {"index": -0.08, "middle": 0.08},
+        "letter-r": {"index": -0.03, "middle": 0.03},
+        "letter-u": {"index": -0.05, "middle": 0.05},
+        "letter-v": {"index": -0.12, "middle": 0.12},
+        "letter-w": {"index": -0.14, "middle": 0.0, "ring": 0.14},
+    }
+
+    letter_thumb_splay = {
+        "letter-l": -0.28,
+        "letter-y": -0.38,
+        "letter-g": -0.22,
+        "letter-q": -0.22,
     }
 
     word_specs = {
@@ -204,7 +232,12 @@ def main():
             rot = 0.0
             if motion:
                 rot = math.sin(t * math.pi * 2) * 0.25
-            pose = build_hand_pose(curls, rotation=rot)
+            pose = build_hand_pose(
+                curls,
+                rotation=rot,
+                spreads=letter_spreads.get(lesson_id),
+                thumb_splay=letter_thumb_splay.get(lesson_id, 0.0),
+            )
             frames.append(frame_from_points(pose, idx, fps=fps))
         segments = [
             {
@@ -236,7 +269,12 @@ def main():
         for idx in range(45):
             t = idx / 44.0
             rotation = math.sin(t * math.pi * 2) * spec["rot"]
-            pose = build_hand_pose(base_curls, rotation=rotation)
+            pose = build_hand_pose(
+                base_curls,
+                rotation=rotation,
+                spreads=letter_spreads.get(spec["base"]),
+                thumb_splay=letter_thumb_splay.get(spec["base"], 0.0),
+            )
             frames.append(frame_from_points(pose, idx, fps=fps))
         segments = [
             {

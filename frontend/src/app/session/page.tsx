@@ -10,12 +10,14 @@ import { useVideoMetrics } from "@/hooks/useVideoMetrics";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { alignHands, Point2D } from "@/lib/cv/alignment";
 import { ScoringEngine } from "@/lib/cv/scoring";
+import { addOuterPalmNode } from "@/lib/cv/landmarks";
 import { loadLessonKeypoints, loadLessonSegments, loadPack, loadPhrases } from "@/lib/packs/packLoader";
 import { KeypointFrame, LessonMeta, LessonSegments, PackMeta, PhraseEntry } from "@/lib/packs/types";
 
 function cueFromTopJoints(top: number[]) {
   if (top.includes(8) || top.includes(12)) return "Open fingers slightly wider.";
   if (top.includes(4)) return "Adjust your thumb position.";
+  if (top.includes(21)) return "Align the outer palm edge (pinky side).";
   if (top.includes(0)) return "Center your wrist inside the ghost.";
   return "Match the ghost hand closely.";
 }
@@ -51,6 +53,7 @@ export default function SessionPage() {
   const [frameIndex, setFrameIndex] = useState(0);
   const holdStartRef = useRef<number | null>(null);
   const lastPromptRef = useRef<number>(0);
+  const [restFrame, setRestFrame] = useState<KeypointFrame | null>(null);
 
   const { results, loading, ready, error } = useMediaPipe(videoRef.current, {
     swapHandedness: true,
@@ -79,6 +82,26 @@ export default function SessionPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRest = async () => {
+      if (!pack) return;
+      const restLesson = pack.lessons.find((lesson) => lesson.id === "letter-b") || pack.lessons[0];
+      if (!restLesson) return;
+      try {
+        const keypoints = await loadLessonKeypoints(restLesson.keypoints_url);
+        if (cancelled) return;
+        setRestFrame(keypoints[0] ?? null);
+      } catch (err) {
+        console.warn("Rest pose load error", err);
+      }
+    };
+    loadRest();
+    return () => {
+      cancelled = true;
+    };
+  }, [pack]);
 
   const activePhrase = useMemo(
     () => phrases.find((phrase) => phrase.id === selectedPhraseId) || null,
@@ -375,11 +398,17 @@ export default function SessionPage() {
   }, [frames, pack, loopMode, segments, mode, sequence.length, practiceMode, isLearning]);
 
   const leftHand = useMemo(
-    () => (results.leftHand ? results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    () =>
+      results.leftHand
+        ? addOuterPalmNode(results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D))
+        : null,
     [results]
   );
   const rightHand = useMemo(
-    () => (results.rightHand ? results.rightHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    () =>
+      results.rightHand
+        ? addOuterPalmNode(results.rightHand.landmarks.map(([x, y]) => [x, y] as Point2D))
+        : null,
     [results]
   );
 
@@ -391,14 +420,15 @@ export default function SessionPage() {
   }, [leftHand, rightHand, results]);
 
   const currentFrame = frames[frameIndex] || null;
+  const referenceFrame = practiceMode === "normal" ? restFrame : currentFrame;
   const expertHandsBySide = useMemo(() => {
-    if (practiceMode === "normal") {
-      return { Left: null, Right: null };
-    }
-    const left = currentFrame?.left_hand?.map(([x, y]) => [x, y] as Point2D) || null;
-    const right = currentFrame?.right_hand?.map(([x, y]) => [x, y] as Point2D) || null;
-    return { Left: left, Right: right };
-  }, [currentFrame, practiceMode]);
+    const left = referenceFrame?.left_hand?.map(([x, y]) => [x, y] as Point2D) || null;
+    const right = referenceFrame?.right_hand?.map(([x, y]) => [x, y] as Point2D) || null;
+    return {
+      Left: addOuterPalmNode(left),
+      Right: addOuterPalmNode(right),
+    };
+  }, [referenceFrame]);
 
   const mirrorAroundWrist = (hand: Point2D[]): Point2D[] => {
     const wristX = hand[0]?.[0] ?? 0.5;
@@ -421,13 +451,6 @@ export default function SessionPage() {
   }, [userHands, expertHandsBySide]);
 
   useEffect(() => {
-    if (practiceMode === "normal") {
-      scoringRef.current.Left.reset();
-      scoringRef.current.Right.reset();
-      setScore(0);
-      setTopErrors([]);
-      return;
-    }
     const active = alignedHands.filter((entry) => entry.ghost);
     if (!active.length) {
       scoringRef.current.Left.reset();
@@ -491,7 +514,8 @@ export default function SessionPage() {
   ]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
-  const displayedLesson = currentLesson?.name || "Loading lesson";
+  const displayedLesson =
+    practiceMode === "normal" ? "Resting hand posture" : currentLesson?.name || "Loading lesson";
   const stepText =
     practiceMode === "normal"
       ? "Normal tracking mode"
@@ -523,11 +547,7 @@ export default function SessionPage() {
             <h1 className="text-2xl font-semibold">ASL practice session</h1>
           </div>
           <div className="flex items-center gap-3">
-            {practiceMode === "guided" ? (
-              <ScoreMeter score={score} />
-            ) : (
-              <div className="text-sm text-text-secondary">Normal mode</div>
-            )}
+            <ScoreMeter score={score} />
             <Link href="/calibrate" className="text-sm text-text-secondary underline">
               Recalibrate
             </Link>
@@ -544,9 +564,7 @@ export default function SessionPage() {
               videoHeight={videoHeight}
               className="absolute inset-0"
               userHands={alignedHands.map((entry) => entry.user)}
-              ghostHands={
-                practiceMode === "guided" ? alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : [])) : []
-              }
+              ghostHands={alignedHands.flatMap((entry) => (entry.ghost ? [{ side: entry.side, points: entry.ghost }] : []))}
               mirror
               topErrors={topErrors}
             />

@@ -10,7 +10,7 @@ interface OverlayCanvasProps {
   videoHeight?: number;
   mirror?: boolean;
   userHands: Point2D[][];
-  ghostHands: Point2D[][];
+  ghostHands: Array<{ side: "Left" | "Right"; points: Point2D[] }>;
   topErrors?: number[];
   className?: string;
 }
@@ -39,6 +39,9 @@ const HAND_CONNECTIONS = [
   [5, 9],
   [9, 13],
   [13, 17],
+  [0, 21],
+  [17, 21],
+  [13, 21],
 ];
 
 export function OverlayCanvas({
@@ -92,15 +95,20 @@ export function OverlayCanvas({
       return [offsetX + x * drawWidth, offsetY + point[1] * drawHeight] as Point2D;
     };
 
-    const drawSkeleton = (points: Point2D[], color: string, glow = false, errors: number[] = []) => {
+    const drawSkeleton = (
+      points: Point2D[],
+      color: string,
+      options: { glow?: boolean; errors?: number[]; lineWidth?: number; shadowColor?: string } = {}
+    ) => {
+      const { glow = false, errors = [], lineWidth = 3, shadowColor = color } = options;
       ctx.save();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = lineWidth;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       if (glow) {
         ctx.shadowBlur = 16;
-        ctx.shadowColor = color;
+        ctx.shadowColor = shadowColor;
       }
       HAND_CONNECTIONS.forEach(([a, b]) => {
         const p1 = points[a];
@@ -120,15 +128,26 @@ export function OverlayCanvas({
         const [x, y] = transformPoint(p);
         const radius = idx === 0 ? 7 : [4, 8, 12, 16, 20].includes(idx) ? 5 : 4;
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.arc(x, y, radius + Math.max(0, lineWidth - 3) * 0.4, 0, Math.PI * 2);
         ctx.fillStyle = errors.includes(idx) ? "#ef4444" : color;
         ctx.fill();
       });
     };
 
-    ghostHands.forEach((hand) => drawSkeleton(hand, "rgba(41,37,36,0.6)", true));
+    ghostHands.forEach(({ side, points }) => {
+      if (side === "Right") {
+        drawSkeleton(points, "rgba(15,23,42,0.5)", { lineWidth: 5 });
+        drawSkeleton(points, "rgba(255,255,255,0.9)", {
+          glow: true,
+          lineWidth: 3,
+          shadowColor: "rgba(15,23,42,0.4)",
+        });
+      } else {
+        drawSkeleton(points, "rgba(15,23,42,0.7)", { glow: true, lineWidth: 3 });
+      }
+    });
     userHands.forEach((hand, idx) =>
-      drawSkeleton(hand, idx === 0 ? "#0f766e" : "#2563eb", false, idx === 0 ? topErrors : [])
+      drawSkeleton(hand, idx === 0 ? "#0f766e" : "#2563eb", { errors: idx === 0 ? topErrors : [] })
     );
   }, [userHands, ghostHands, width, height, mirror, topErrors]);
 
