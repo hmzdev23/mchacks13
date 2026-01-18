@@ -13,7 +13,8 @@ export const Camera = forwardRef<HTMLVideoElement, CameraProps>(({ mirrored = tr
     <div className={`relative overflow-hidden rounded-xl border border-border bg-black ${className ?? ""}`}>
       <video
         ref={ref}
-        className={`w-full h-full object-contain ${mirrored ? "scale-x-[-1]" : ""}`}
+        className="w-full h-full object-contain"
+        style={{ transform: mirrored ? "scaleX(-1)" : "none", transformOrigin: "center" }}
         autoPlay
         playsInline
         muted

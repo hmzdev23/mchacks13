@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Point2D } from "@/lib/cv/alignment";
+import { Point2D, HandBBox } from "@/lib/cv/alignment";
 
 interface OverlayCanvasProps {
   width: number;
@@ -13,6 +13,19 @@ interface OverlayCanvasProps {
   ghostHands: Point2D[][];
   topErrors?: number[];
   className?: string;
+  debug?: boolean;
+  debugInfo?: {
+    anchorUser: Point2D;
+    anchorExpert: Point2D;
+    bboxUser: HandBBox;
+    bboxExpert: HandBBox;
+    transformPx: {
+      scale: number;
+      rotation: number;
+      translation: Point2D;
+      anchor: Point2D;
+    };
+  }[];
 }
 
 const HAND_CONNECTIONS = [
@@ -51,6 +64,8 @@ export function OverlayCanvas({
   ghostHands,
   topErrors = [],
   className,
+  debug = false,
+  debugInfo = [],
 }: OverlayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -62,34 +77,31 @@ export function OverlayCanvas({
     if (width <= 0 || height <= 0) return;
 
     const dpr = window.devicePixelRatio || 1;
+    const frameWidth = videoWidth && videoHeight ? videoWidth : width;
+    const frameHeight = videoWidth && videoHeight ? videoHeight : height;
+
+    // Match canvas resolution to the on-screen size; keep drawing in CSS pixels.
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, width, height);
 
-    let drawWidth = width;
-    let drawHeight = height;
-    let offsetX = 0;
-    let offsetY = 0;
-    if (videoWidth && videoHeight) {
-      const videoAspect = videoWidth / videoHeight;
-      const frameAspect = width / height;
-      if (videoAspect > frameAspect) {
-        drawWidth = width;
-        drawHeight = width / videoAspect;
-        offsetY = (height - drawHeight) / 2;
-      } else {
-        drawHeight = height;
-        drawWidth = height * videoAspect;
-        offsetX = (width - drawWidth) / 2;
-      }
-    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Map normalized landmarks into the CSS-sized container (object-contain).
+    const scale = Math.min(width / frameWidth, height / frameHeight);
+    const offsetX = (width - frameWidth * scale) / 2;
+    const offsetY = (height - frameHeight * scale) / 2;
 
     const transformPoint = (point: Point2D) => {
-      const x = mirror ? 1 - point[0] : point[0];
-      return [offsetX + x * drawWidth, offsetY + point[1] * drawHeight] as Point2D;
+      // Accept either normalized (0..1) or pixel inputs.
+      const isNormalized = Math.abs(point[0]) <= 2 && Math.abs(point[1]) <= 2;
+      const xPx = isNormalized ? point[0] * frameWidth : point[0];
+      const yPx = isNormalized ? point[1] * frameHeight : point[1];
+      const x = mirror ? frameWidth - xPx : xPx;
+      return [offsetX + x * scale, offsetY + yPx * scale] as Point2D;
     };
 
     const drawSkeleton = (points: Point2D[], color: string, glow = false, errors: number[] = []) => {
@@ -126,11 +138,75 @@ export function OverlayCanvas({
       });
     };
 
-    ghostHands.forEach((hand) => drawSkeleton(hand, "rgba(41,37,36,0.6)", true));
     userHands.forEach((hand, idx) =>
       drawSkeleton(hand, idx === 0 ? "#0f766e" : "#2563eb", false, idx === 0 ? topErrors : [])
     );
-  }, [userHands, ghostHands, width, height, mirror, topErrors]);
+    ghostHands.forEach((hand) => drawSkeleton(hand, "rgba(41,37,36,0.6)", true));
+
+    if (debug) {
+      const computeBBox = (points: Point2D[]) => {
+        let minX = Number.POSITIVE_INFINITY;
+        let minY = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+        points.forEach((p) => {
+          minX = Math.min(minX, p[0]);
+          minY = Math.min(minY, p[1]);
+          maxX = Math.max(maxX, p[0]);
+          maxY = Math.max(maxY, p[1]);
+        });
+        return { min: [minX, minY] as Point2D, max: [maxX, maxY] as Point2D };
+      };
+
+      ctx.save();
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.6)";
+
+      userHands.forEach((hand, idx) => {
+        if (!hand.length) return;
+        hand.forEach((point, joint) => {
+          const [x, y] = transformPoint(point);
+          ctx.beginPath();
+          ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = "#0f766e";
+          ctx.fill();
+          ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+          ctx.fillText(String(joint), x + 4, y - 4);
+        });
+
+        const info = debugInfo[idx];
+        if (info) {
+          const bbox = info.bboxUser;
+          const [bx1, by1] = transformPoint(bbox.min);
+          const [bx2, by2] = transformPoint(bbox.max);
+          ctx.strokeStyle = "rgba(16, 185, 129, 0.8)";
+          ctx.strokeRect(bx1, by1, bx2 - bx1, by2 - by1);
+
+          const ghostBBox = ghostHands[idx]?.length ? computeBBox(ghostHands[idx]) : null;
+          if (ghostBBox) {
+            const [gx1, gy1] = transformPoint(ghostBBox.min);
+            const [gx2, gy2] = transformPoint(ghostBBox.max);
+            ctx.strokeStyle = "rgba(124, 58, 237, 0.8)";
+            ctx.strokeRect(gx1, gy1, gx2 - gx1, gy2 - gy1);
+          }
+
+          const [ax, ay] = transformPoint(info.anchorUser);
+          ctx.fillStyle = "#f59e0b";
+          ctx.beginPath();
+          ctx.arc(ax, ay, 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+          const rotationDeg = (info.transformPx.rotation * 180) / Math.PI;
+          ctx.fillText(`scale: ${info.transformPx.scale.toFixed(2)}`, 12, 20 + idx * 40);
+          ctx.fillText(`rot: ${rotationDeg.toFixed(1)} deg`, 12, 36 + idx * 40);
+          ctx.fillText(`tx: ${info.transformPx.translation[0].toFixed(1)} px  ty: ${info.transformPx.translation[1].toFixed(1)} px`, 12, 52 + idx * 40);
+        }
+      });
+      ctx.restore();
+    }
+  }, [userHands, ghostHands, width, height, mirror, topErrors, debug, debugInfo, videoWidth, videoHeight]);
 
   return <canvas ref={canvasRef} width={width} height={height} className={className} />;
 }
