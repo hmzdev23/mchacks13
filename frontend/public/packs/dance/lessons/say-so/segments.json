@@ -1,0 +1,21 @@
+{
+  "segments": [
+    {
+      "id": "loop",
+      "name": "Loop",
+      "start_frame": 0,
+      "end_frame": 59,
+      "difficulty": "easy",
+      "focus_joints": [
+        11,
+        12,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28
+      ]
+    }
+  ]
+}

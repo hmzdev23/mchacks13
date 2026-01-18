@@ -325,7 +325,7 @@ export function ASLMode({ className }: ASLModeProps) {
 
       setScore(combinedScore);
 
-      if (combinedScore >= 85 && !isCompleted) {
+      if (combinedScore >= 80 && !isCompleted) {
         const now = Date.now();
         if (!holdStartTimeRef.current) holdStartTimeRef.current = now;
         const elapsed = now - holdStartTimeRef.current;
@@ -391,15 +391,15 @@ export function ASLMode({ className }: ASLModeProps) {
       hints: Record<string, string>,
       dynamic: Record<string, { word: string; label: string; keypoints_url: string; image_url: string }>
     ) => {
-    setPhraseSequence(sequence);
-    setPhraseGloss(gloss);
-    setPhraseHints(hints);
-    setDynamicLessons(dynamic);
-    setPhraseIndex(0);
-    setIsCompleted(false);
-    setHoldProgress(0);
-    holdStartTimeRef.current = null;
-  }, []);
+      setPhraseSequence(sequence);
+      setPhraseGloss(gloss);
+      setPhraseHints(hints);
+      setDynamicLessons(dynamic);
+      setPhraseIndex(0);
+      setIsCompleted(false);
+      setHoldProgress(0);
+      holdStartTimeRef.current = null;
+    }, []);
 
   // Get current display name for phrase mode
   const getCurrentPhraseItemName = useCallback(() => {
@@ -761,7 +761,7 @@ export function ASLMode({ className }: ASLModeProps) {
         {/* Right Panel */}
         <div className="lg:col-span-4 flex flex-col gap-6 h-full min-h-0">
           {/* Score Panel */}
-          <div className={`glass-panel rounded-2xl p-6 border border-white/60 shadow-sm flex-none transition-colors duration-500 ${score >= 85 ? 'bg-emerald-50/50 border-emerald-200' : ''} relative overflow-hidden`}>
+          <div className={`glass-panel rounded-2xl p-6 border border-white/60 shadow-sm flex-none transition-colors duration-500 ${score >= 80 ? 'bg-emerald-50/50 border-emerald-200' : ''} relative overflow-hidden`}>
             {holdProgress > 0 && (
               <div
                 className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-100 ease-linear z-10"
@@ -776,7 +776,7 @@ export function ASLMode({ className }: ASLModeProps) {
                 <h2 className="text-4xl font-light text-[var(--stone-900)] mt-1" style={{ fontFamily: 'var(--font-heading)' }}>
                   {Math.round(score)}<span className="text-lg text-[var(--stone-400)] font-normal">%</span>
                 </h2>
-                {score >= 85 && holdProgress < 100 && (
+                {score >= 80 && holdProgress < 100 && (
                   <p className="text-xs text-emerald-600 font-bold animate-pulse mt-1">HOLD STEADY...</p>
                 )}
               </div>
@@ -791,7 +791,7 @@ export function ASLMode({ className }: ASLModeProps) {
             </div>
             <div className="w-full bg-[var(--stone-200)] h-1 rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all duration-300 ${score >= 85 ? 'bg-emerald-500' : 'bg-[var(--stone-900)]'}`}
+                className={`h-full transition-all duration-300 ${score >= 80 ? 'bg-emerald-500' : 'bg-[var(--stone-900)]'}`}
                 style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
               />
             </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useSessionStore } from "@/store/sessionStore";
 import { ASLMode } from "@/components/session/ASLMode";
@@ -8,7 +10,15 @@ import { NormalMode } from "@/components/session/NormalMode";
 import Link from "next/link";
 
 export default function SessionPage() {
-  const { mode } = useSessionStore();
+  const { mode, setMode } = useSessionStore();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const requested = searchParams.get("mode");
+    if (requested === "asl" || requested === "dance" || requested === "normal") {
+      setMode(requested);
+    }
+  }, [searchParams, setMode]);
 
   return (
     <main className="flex min-h-screen selection:bg-[var(--stone-300)] selection:text-[var(--stone-900)] bg-[var(--stone-100)]">

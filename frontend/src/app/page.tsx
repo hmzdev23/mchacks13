@@ -25,6 +25,19 @@ const packs = [
     available: true,
   },
   {
+    id: "dance",
+    name: "Dance Studio",
+    description: "Learn viral choreography with full-body tracking",
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 18V5l10-2v13" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="16" r="2" />
+      </svg>
+    ),
+    available: true,
+  },
+  {
     id: "cpr",
     name: "CPR Form",
     description: "Master life-saving techniques",
