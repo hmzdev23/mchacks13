@@ -7,7 +7,7 @@
     {
       "id": "macarena",
       "name": "Macarena - Los Del Rìo",
-      "description": "Macarena routine captured from the 2022 demo.",
+      "description": "Classic party line-dance routine built on the Macarena chorus groove.",
       "difficulty": "easy",
       "type": "dance",
       "keypoints_url": "/packs/dance/lessons/macarena/keypoints.json",
@@ -19,8 +19,8 @@
     {
       "id": "just-dance",
       "name": "Just Dance - Lady Gaga",
-      "description": "Just Dance routine captured from the greenscreen extraction.",
-      "difficulty": "easy",
+      "description": "Pop dance routine with crisp arm hits and club-ready footwork.",
+      "difficulty": "medium",
       "type": "dance",
       "keypoints_url": "/packs/dance/lessons/just-dance/keypoints.json",
       "segments_url": "/packs/dance/lessons/just-dance/segments.json",
@@ -31,8 +31,8 @@
     {
       "id": "starships",
       "name": "Starships - Nicki Minaj",
-      "description": "Starships routine captured from the greenscreen extraction.",
-      "difficulty": "easy",
+      "description": "High-energy pop routine with big steps and explosive accents.",
+      "difficulty": "hard",
       "type": "dance",
       "keypoints_url": "/packs/dance/lessons/starships/keypoints.json",
       "segments_url": "/packs/dance/lessons/starships/segments.json",

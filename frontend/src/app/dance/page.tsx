@@ -526,7 +526,7 @@ export default function DanceSessionPage() {
                 <input type="checkbox" checked={loopMode} onChange={(e) => setLoopMode(e.target.checked)} />
               </div>
               <div className="flex items-center justify-between text-sm">
-                <label className="text-text-secondary">Music</label>
+                <label className="text-text-secondary">Sound</label>
                 <input
                   type="checkbox"
                   checked={audioEnabled}
