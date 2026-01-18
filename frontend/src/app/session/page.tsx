@@ -1,377 +1,157 @@
-/**
- * Session Page
- * 
- * The main practice interface - where the magic happens.
- * Clean, modern light mode design.
- */
-
 "use client";
 
-import { useState, useRef, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Camera, CameraRef } from "@/components/session/Camera";
-import { GhostOverlay } from "@/components/session/GhostOverlay";
-import { ScoreMeter } from "@/components/session/ScoreMeter";
-import { CueDisplay } from "@/components/session/CueDisplay";
-import { LoopBar } from "@/components/session/LoopBar";
-import { SessionControls } from "@/components/session/SessionControls";
-import { VoiceIndicator } from "@/components/session/VoiceIndicator";
-import { ElevenLabsAgent } from "@/components/session/ElevenLabsAgent";
-import { Spinner } from "@/components/ui/loaders";
+import { Camera } from "@/components/Camera";
+import { OverlayCanvas } from "@/components/OverlayCanvas";
+import { ScoreMeter } from "@/components/ScoreMeter";
+import { useElementSize } from "@/hooks/useElementSize";
+import { useVideoMetrics } from "@/hooks/useVideoMetrics";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
-import { useVoiceCommands } from "@/hooks/useVoiceCommands";
-import { useSessionStore } from "@/store/sessionStore";
-import { alignHands } from "@/lib/alignment";
-import { scoreFrame, resetScoring } from "@/lib/scoring";
-import { generateCues } from "@/lib/cueMapper";
-import { coachingAPI, voiceAPI } from "@/lib/api/client";
+import { alignHands, Point2D } from "@/lib/cv/alignment";
+import { ScoringEngine } from "@/lib/cv/scoring";
+import { expertHandLeft, expertHandRight } from "@/lib/packs/sampleExpert";
 
-import ASL_LANDMARKS from "@/data/asl_landmarks.json";
-
-function SessionContent() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const packId = searchParams.get("pack") || "sign-language";
-    const lessonId = (searchParams.get("lesson") || "A").toUpperCase(); // Default to 'A'
-
-    const cameraRef = useRef<CameraRef>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
-    const [dimensions, setDimensions] = useState({ width: 1280, height: 720 });
-
-    const {
-        isActive,
-        isPaused,
-        currentScore,
-        scoreHistory,
-        topErrorJoints,
-        trend,
-        currentCue,
-        currentFrame,
-        totalFrames,
-        expertKeypoints,
-        alignmentTransform,
-        startSession,
-        pauseSession,
-        resumeSession,
-        endSession,
-        updateUserKeypoints,
-        setExpertFrames,
-        setCurrentFrame,
-        updateAlignment,
-        updateScore,
-        setCue,
-    } = useSessionStore();
-
-    const [isSlowMode, setIsSlowMode] = useState(false);
-    const [fps, setFps] = useState(0);
-    const lastCoachingTime = useRef(0);
-
-    // Initialize session with ASL data
-    useEffect(() => {
-        resetScoring();
-
-        // Load landmarks for the current letter
-        const landmarks = (ASL_LANDMARKS as any)[lessonId];
-
-        if (landmarks) {
-            // For static poses, we just replicate the single frame to create a "video" of length 1
-            // or just set it as a single frame. The store expects an array of frames.
-            // Let's create a 1-second static "video" at 30fps so the loop bar has something to show
-            const staticFrames = Array(30).fill(landmarks);
-            setExpertFrames(staticFrames);
-        } else {
-            console.error(`No landmarks found for lesson: ${lessonId}`);
-            // Fallback to 'A' or empty
-            const fallback = (ASL_LANDMARKS as any)["A"];
-            setExpertFrames(Array(30).fill(fallback || []));
-        }
-
-        startSession();
-
-        return () => {
-            endSession();
-        };
-    }, [setExpertFrames, startSession, endSession, lessonId]);
-
-    // Handle container resize
-    useEffect(() => {
-        const updateDimensions = () => {
-            if (containerRef.current) {
-                setDimensions({
-                    width: containerRef.current.clientWidth,
-                    height: containerRef.current.clientHeight,
-                });
-            }
-        };
-
-        updateDimensions();
-        window.addEventListener("resize", updateDimensions);
-        return () => window.removeEventListener("resize", updateDimensions);
-    }, []);
-
-    // MediaPipe tracking
-    const { isLoading, results } = useMediaPipe(videoElement, {
-        detectHands: true,
-        onResults: (res) => {
-            setFps(res.fps);
-
-            // Get user hand (prefer right hand)
-            const userHand = res.rightHand?.landmarks || res.leftHand?.landmarks;
-
-            if (userHand && expertKeypoints.leftHand) {
-                updateUserKeypoints({
-                    leftHand: res.leftHand?.landmarks || null,
-                    rightHand: res.rightHand?.landmarks || null,
-                    pose: null,
-                });
-
-                // Align expert to user
-                const alignment = alignHands(expertKeypoints.leftHand, userHand);
-                updateAlignment({
-                    scale: alignment.scale,
-                    translation: alignment.translation,
-                    rotation: alignment.rotation,
-                });
-
-                // Score the frame
-                const scoring = scoreFrame(userHand, alignment.alignedExpert);
-                updateScore(scoring.overallScore, scoring.topErrorJoints);
-
-                // Generate cues
-                const cues = generateCues(
-                    userHand,
-                    alignment.alignedExpert,
-                    scoring.perJointErrors,
-                    scoring.topErrorJoints,
-                    scoring.overallScore
-                );
-
-                if (cues.length > 0) {
-                    setCue({
-                        primary: cues[0].text,
-                        secondary: cues[1]?.text || null,
-                        encouragement: scoring.overallScore >= 85 ? "Great!" : null,
-                    });
-
-                    // Request coaching from AI (throttled)
-                    const now = Date.now();
-                    if (now - lastCoachingTime.current > 5000 && cues.length > 0) {
-                        lastCoachingTime.current = now;
-                        requestCoaching(cues.map(c => c.text), scoring.perJointErrors, scoring.topErrorJoints, scoring.overallScore);
-                    }
-                }
-            }
-
-            // Advance frame
-            if (!isPaused && isActive) {
-                const speed = isSlowMode ? 0.5 : 1;
-                setCurrentFrame(currentFrame + speed);
-            }
-        },
-    });
-
-    // Request AI coaching
-    const requestCoaching = async (
-        cues: string[],
-        errors: Record<number, number>,
-        topErrors: number[],
-        score: number
-    ) => {
-        try {
-            const response = await coachingAPI.generateCoaching({
-                deterministic_cues: cues,
-                per_joint_errors: Object.fromEntries(
-                    Object.entries(errors).map(([k, v]) => [k, v])
-                ),
-                top_error_joints: topErrors,
-                current_score: score,
-                pack_context: packId,
-            });
-
-            if (response.should_speak && response.primary_cue) {
-                // Synthesize speech
-                const audio = await voiceAPI.synthesize(response.primary_cue);
-                voiceAPI.playAudio(audio.audio);
-            }
-        } catch (error) {
-            console.error("Coaching error:", error);
-        }
-    };
-
-    // Voice commands
-    const { isListening, lastCommand } = useVoiceCommands({
-        enabled: isActive,
-        onCommand: (cmd) => {
-            switch (cmd) {
-                case "start":
-                case "stop":
-                    isPaused ? resumeSession() : pauseSession();
-                    break;
-                case "slow":
-                    setIsSlowMode(true);
-                    break;
-                case "normal":
-                    setIsSlowMode(false);
-                    break;
-                case "restart":
-                    setCurrentFrame(0);
-                    break;
-            }
-        },
-    });
-
-    // End session
-    const handleEndSession = () => {
-        endSession();
-        router.push(`/recap?pack=${packId}&lesson=${lessonId}`);
-    };
-
-    return (
-        <main className="h-screen bg-[var(--color-bg-primary)] flex flex-col overflow-hidden relative">
-            {/* Gradient Blur Orbs */}
-            <div className="gradient-blur-container">
-                <div className="gradient-orb gradient-orb-1" />
-                <div className="gradient-orb gradient-orb-3" />
-            </div>
-
-            {/* Header */}
-            <header className="flex-none m-4 mb-0 relative z-10">
-                <div className="glass-nav rounded-2xl px-6 py-3 flex items-center justify-between">
-                    <button
-                        onClick={handleEndSession}
-                        className="glass-button flex items-center gap-2 px-3 py-2 rounded-xl text-[var(--color-text-secondary)] hover:text-[var(--color-error)] transition-colors"
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        <span className="text-sm font-medium">End Session</span>
-                    </button>
-
-                    <div className="text-center">
-                        <h1 className="font-display text-lg font-semibold text-[var(--color-text-primary)]">Hello</h1>
-                        <p className="text-xs text-[var(--color-text-tertiary)]">Sign Language Pack</p>
-                    </div>
-
-                    <div className="glass-button flex items-center gap-2 px-3 py-2 rounded-xl text-[var(--color-text-secondary)]">
-                        <div className="w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse" />
-                        <span className="text-xs font-medium">{fps} FPS</span>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main content */}
-            <div className="flex-1 flex relative overflow-hidden z-10">
-                {/* Camera + Ghost overlay */}
-                <div
-                    ref={containerRef}
-                    className="flex-1 relative m-4 mr-2"
-                >
-                    <div className="absolute inset-0 glass-heavy rounded-2xl overflow-hidden">
-                        <Camera
-                            ref={cameraRef}
-                            onStreamReady={(video) => setVideoElement(video)}
-                            className="absolute inset-0"
-                        />
-
-                        {/* Ghost overlay */}
-                        {expertKeypoints.leftHand && (
-                            <GhostOverlay
-                                width={dimensions.width}
-                                height={dimensions.height}
-                                expertKeypoints={expertKeypoints.leftHand}
-                                alignmentTransform={alignmentTransform}
-                                topErrorJoints={topErrorJoints}
-                                mirrored={true}
-                            />
-                        )}
-
-                        {/* Score Meter Overlay - Top Right */}
-                        <div className="absolute top-4 right-4 z-20">
-                            <ScoreMeter
-                                score={currentScore}
-                                trend={trend}
-                                size="md"
-                            />
-                        </div>
-
-                        {/* Loading overlay */}
-                        {isLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-3">
-                                    <Spinner size="lg" />
-                                    <p className="text-[var(--color-text-secondary)] font-medium text-sm">Loading...</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Cue display */}
-                        <div className="absolute bottom-6 left-6 right-6">
-                            <CueDisplay
-                                primaryCue={currentCue.primary}
-                                secondaryCue={currentCue.secondary}
-                                encouragement={currentCue.encouragement}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Side panel - Redesigned */}
-                <div className="w-72 flex-none m-4 ml-2 glass-heavy rounded-2xl p-5 flex flex-col">
-                    {/* AI Coach Section */}
-                    <ElevenLabsAgent
-                        sessionContext={{
-                            packId,
-                            lessonName: "Hello",
-                            currentScore,
-                            topErrors: topErrorJoints.map(j => `Joint ${j}`),
-                        }}
-                    />
-
-                    {/* Divider */}
-                    <div className="my-4 h-px bg-[var(--stone-200)]" />
-
-                    {/* Voice Commands Section */}
-                    <VoiceIndicator
-                        isListening={isListening}
-                        lastCommand={lastCommand}
-                    />
-
-                    {/* Spacer */}
-                    <div className="flex-1" />
-
-                    {/* Session controls - Centered at bottom */}
-                    <div className="flex justify-center pt-4 border-t border-[var(--stone-200)]">
-                        <SessionControls
-                            isPlaying={!isPaused}
-                            onPlay={resumeSession}
-                            onPause={pauseSession}
-                            onRestart={() => setCurrentFrame(0)}
-                            onSlowMode={() => setIsSlowMode(!isSlowMode)}
-                            isSlowMode={isSlowMode}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Loop bar */}
-            <div className="flex-none mx-4 mb-4 px-6 py-4 glass-heavy rounded-2xl relative z-10">
-                <LoopBar totalFrames={totalFrames} />
-            </div>
-        </main>
-    );
+function cueFromTopJoints(top: number[]) {
+  if (top.includes(8) || top.includes(12)) return "Open fingers slightly wider.";
+  if (top.includes(4)) return "Adjust your thumb position.";
+  if (top.includes(0)) return "Center your wrist inside the ghost.";
+  return "Match the ghost hand closely.";
 }
 
 export default function SessionPage() {
-    return (
-        <Suspense fallback={
-            <div className="h-screen bg-[var(--color-bg-secondary)] flex items-center justify-center">
-                <Spinner size="lg" />
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [score, setScore] = useState(0);
+  const [topErrors, setTopErrors] = useState<number[]>([]);
+  const scoringRef = useRef<{ Left: ScoringEngine; Right: ScoringEngine }>({
+    Left: new ScoringEngine(),
+    Right: new ScoringEngine(),
+  });
+
+  const { results, loading, ready, error } = useMediaPipe(videoRef.current, {
+    swapHandedness: true,
+    minHandScore: 0.6,
+  });
+  const { width, height } = useElementSize(frameRef.current);
+  const { width: videoWidth, height: videoHeight } = useVideoMetrics(videoRef.current);
+
+  const leftHand = useMemo(
+    () => (results.leftHand ? results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    [results]
+  );
+  const rightHand = useMemo(
+    () => (results.rightHand ? results.rightHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    [results]
+  );
+
+  const hands = useMemo(() => {
+    const entries: { side: "Left" | "Right"; points: Point2D[]; score: number }[] = [];
+    if (leftHand && results.leftHand) entries.push({ side: "Left", points: leftHand, score: results.leftHand.score });
+    if (rightHand && results.rightHand) entries.push({ side: "Right", points: rightHand, score: results.rightHand.score });
+    return entries;
+  }, [leftHand, rightHand, results]);
+
+  const ghostHands = useMemo(
+    () =>
+      hands.map((hand) =>
+        alignHands(hand.side === "Left" ? expertHandLeft : expertHandRight, hand.points).alignedExpert
+      ),
+    [hands]
+  );
+  const userHands = useMemo(() => hands.map((hand) => hand.points), [hands]);
+
+  useEffect(() => {
+    if (!hands.length || !ghostHands.length) {
+      scoringRef.current.Left.reset();
+      scoringRef.current.Right.reset();
+      setScore(0);
+      setTopErrors([]);
+      return;
+    }
+    const scores = hands.map((hand, idx) => scoringRef.current[hand.side].score(hand.points, ghostHands[idx]));
+    const avgScore = scores.reduce((acc, s) => acc + s.overall, 0) / scores.length;
+    setScore(avgScore);
+    const primaryIndex = hands.findIndex((hand) => hand.side === "Left");
+    setTopErrors(scores[primaryIndex >= 0 ? primaryIndex : 0]?.topJoints ?? []);
+  }, [hands, ghostHands]);
+
+  const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
+
+  return (
+    <main className="min-h-screen bg-bg-primary text-text-primary">
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-text-secondary">Session</p>
+            <h1 className="text-2xl font-semibold">Ghost overlay practice</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <ScoreMeter score={score} />
+            <Link href="/calibrate" className="text-sm text-text-secondary underline">
+              Recalibrate
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[2fr_1fr] gap-6 items-start">
+          <div ref={frameRef} className="rounded-2xl border border-border overflow-hidden bg-white shadow-md relative">
+            <Camera ref={videoRef} className="aspect-video" mirrored />
+            <OverlayCanvas
+              width={width}
+              height={height}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              className="absolute inset-0"
+              userHands={userHands}
+              ghostHands={ghostHands}
+              mirror
+              topErrors={topErrors}
+            />
+            {(!ready || loading || error) && (
+              <div className="absolute inset-0 grid place-items-center text-text-secondary text-sm bg-white/60 backdrop-blur-sm text-center px-4">
+                {error
+                  ? `Camera error: ${error}`
+                  : loading
+                  ? "Starting MediaPipe…"
+                  : "Allow camera to start the session…"}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
+              <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">Live cue</p>
+              <p className="text-lg font-medium">{cue}</p>
+              <p className="text-sm text-text-secondary mt-2">Top joints: {topErrors.join(", ") || "tracking..."}</p>
             </div>
-        }>
-            <SessionContent />
-        </Suspense>
-    );
+            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
+              <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">Tracking</p>
+              <ul className="text-sm text-text-secondary space-y-1">
+                <li>FPS: {results.fps || "…"}</li>
+                <li>
+                  Hands:{" "}
+                  {results.leftHand || results.rightHand
+                    ? [results.leftHand ? "Left" : null, results.rightHand ? "Right" : null]
+                        .filter(Boolean)
+                        .join(" + ")
+                    : "None detected"}
+                </li>
+                <li>Status: {loading ? "Starting MediaPipe…" : ready ? "Live" : "Waiting for camera"}</li>
+                {error ? <li className="text-error">Error: {error}</li> : null}
+              </ul>
+            </div>
+            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
+              <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">How to use</p>
+              <ol className="text-sm text-text-secondary list-decimal list-inside space-y-1">
+                <li>Center your hand in the frame; keep fingers visible.</li>
+                <li>Slide your hand into the ghost outline.</li>
+                <li>Open/rotate fingers until the score rises.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
