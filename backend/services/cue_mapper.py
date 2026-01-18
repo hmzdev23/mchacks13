@@ -221,7 +221,7 @@ class CueMapper:
             p1, p2, p3 = chain[1], chain[2], chain[3]
             angle_user = compute_angle_at_joint(user[p1], user[p2], user[p3])
             angle_expert = compute_angle_at_joint(expert[p1], expert[p2], expert[p3])
-            delta = np.degrees(angle_user - angle_expert)
+            delta = angle_user - angle_expert
 
             if np.abs(delta) < self.ANGLE_THRESHOLD:
                 continue

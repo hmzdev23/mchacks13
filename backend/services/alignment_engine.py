@@ -202,7 +202,9 @@ class AlignmentEngine:
         """Separate coordinates and optional confidence/visibility column."""
         coords = keypoints[:, :2].astype(np.float32)
         conf = None
-        if keypoints.shape[1] >= 3:
+        if keypoints.shape[1] >= 4:
+            conf = keypoints[:, 3]
+        elif keypoints.shape[1] >= 3:
             conf = keypoints[:, 2]
         return coords, conf
 
