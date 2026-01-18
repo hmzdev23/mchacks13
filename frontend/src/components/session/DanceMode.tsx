@@ -167,6 +167,14 @@ export function DanceMode({ className }: DanceModeProps) {
     return pack.lessons.find((lesson) => lesson.id === selectedLessonId) || null;
   }, [pack, selectedLessonId]);
   const audioUrl = currentLesson?.audio_url ?? null;
+  const expertMirrored = useMemo(() => {
+    const frame = frames.find((entry) => entry.pose && entry.pose[11] && entry.pose[12]);
+    if (!frame?.pose) return false;
+    const left = frame.pose[11];
+    const right = frame.pose[12];
+    if (!left || !right) return false;
+    return left[0] < right[0];
+  }, [frames]);
   const isCountingDown = countdown !== null;
   const resetSessionStats = useCallback(() => {
     sessionStatsRef.current = { sum: 0, count: 0, jointCounts: new Map() };
@@ -355,8 +363,10 @@ export function DanceMode({ className }: DanceModeProps) {
   const currentFrame = frames[frameIndex] || null;
   const expertPose = useMemo(() => {
     if (!currentFrame?.pose) return null;
-    return currentFrame.pose.map(([x, y]) => [x, y] as Point2D);
-  }, [currentFrame]);
+    const pose = currentFrame.pose.map(([x, y]) => [x, y] as Point2D);
+    if (!expertMirrored) return pose;
+    return pose.map(([x, y]) => [1 - x, y] as Point2D);
+  }, [currentFrame, expertMirrored]);
   const userPose = useMemo(() => {
     if (!results.pose) {
       smoothPoseRef.current = null;
@@ -378,7 +388,7 @@ export function DanceMode({ className }: DanceModeProps) {
 
   const alignedPose = useMemo(() => {
     if (!userPose || !expertPose) return null;
-    return alignPose(expertPose, userPose).alignedExpert;
+    return alignPose(expertPose, userPose, { allowRotation: false }).alignedExpert;
   }, [expertPose, userPose]);
   const ghostPose = alignedPose ?? expertPose;
 
