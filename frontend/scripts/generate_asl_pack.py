@@ -194,10 +194,10 @@ def main():
         "letter-q": -0.22,
     }
 
-    rest_curls = {"thumb": 0.35, "index": 0.45, "middle": 0.4, "ring": 0.5, "pinky": 0.55}
-    rest_spreads = {"index": -0.02, "middle": 0.0, "ring": 0.02, "pinky": 0.04}
-    rest_thumb_splay = -0.08
-    rest_rotation = 0.04
+    rest_curls = {"thumb": 0.25, "index": 0.35, "middle": 0.33, "ring": 0.42, "pinky": 0.5}
+    rest_spreads = {"index": -0.03, "middle": 0.0, "ring": 0.03, "pinky": 0.06}
+    rest_thumb_splay = -0.16
+    rest_rotation = 0.02
 
     word_specs = {
         "word-hello": {"base": "letter-b", "rot": 0.35},
