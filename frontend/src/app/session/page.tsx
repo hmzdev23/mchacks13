@@ -33,6 +33,8 @@ export default function SessionPage() {
   const [topErrors, setTopErrors] = useState<number[]>([]);
   const [pack, setPack] = useState<PackMeta | null>(null);
   const [phrases, setPhrases] = useState<PhraseEntry[]>([]);
+  const [practiceMode, setPracticeMode] = useState<"normal" | "guided">("guided");
+  const [isLearning, setIsLearning] = useState(false);
   const [mode, setMode] = useState<"phrase" | "lesson">("phrase");
   const [phraseSource, setPhraseSource] = useState<"library" | "custom">("library");
   const [customPhrase, setCustomPhrase] = useState("");
@@ -47,6 +49,8 @@ export default function SessionPage() {
   const [segments, setSegments] = useState<LessonSegments | null>(null);
   const [loopMode, setLoopMode] = useState(true);
   const [frameIndex, setFrameIndex] = useState(0);
+  const holdStartRef = useRef<number | null>(null);
+  const lastPromptRef = useRef<number>(0);
 
   const { results, loading, ready, error } = useMediaPipe(videoRef.current, {
     swapHandedness: true,
@@ -101,6 +105,19 @@ export default function SessionPage() {
     }
   }, [mode]);
 
+  useEffect(() => {
+    if (practiceMode === "normal") {
+      setIsLearning(false);
+    }
+  }, [practiceMode]);
+
+  useEffect(() => {
+    setIsLearning(false);
+    holdStartRef.current = null;
+    lastPromptRef.current = 0;
+    advanceRef.current = false;
+  }, [mode, phraseSource, selectedPhraseId, selectedLessonId, sequence]);
+
   const currentLessonId = sequence[currentIndex] || "";
   const currentLesson: LessonMeta | null = useMemo(() => {
     if (!pack || !currentLessonId) return null;
@@ -122,6 +139,35 @@ export default function SessionPage() {
     });
     return { words, letters };
   }, [pack]);
+
+  const targetScore = useMemo(() => {
+    switch (currentLesson?.difficulty) {
+      case "hard":
+        return 88;
+      case "medium":
+        return 82;
+      case "easy":
+        return 75;
+      default:
+        return 80;
+    }
+  }, [currentLesson?.difficulty]);
+
+  const holdDurationMs = useMemo(() => {
+    switch (currentLesson?.difficulty) {
+      case "hard":
+        return 900;
+      case "medium":
+        return 700;
+      case "easy":
+        return 500;
+      default:
+        return 650;
+    }
+  }, [currentLesson?.difficulty]);
+
+  const holdSeconds = (holdDurationMs / 1000).toFixed(1);
+  const canLearn = practiceMode === "guided" && sequence.length > 0;
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -152,6 +198,25 @@ export default function SessionPage() {
       }
     }
   };
+
+  useEffect(() => {
+    if (!isLearning) {
+      holdStartRef.current = null;
+      lastPromptRef.current = 0;
+      advanceRef.current = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      return;
+    }
+    holdStartRef.current = null;
+    lastPromptRef.current = performance.now();
+    advanceRef.current = false;
+  }, [isLearning]);
 
   const applyCustomPhrase = () => {
     if (!pack) return;
@@ -271,7 +336,17 @@ export default function SessionPage() {
   }, [currentLesson]);
 
   useEffect(() => {
+    holdStartRef.current = null;
+    lastPromptRef.current = performance.now();
+    advanceRef.current = false;
+  }, [currentLessonId]);
+
+  useEffect(() => {
     if (!frames.length || !pack) return;
+    if (practiceMode === "normal") {
+      setFrameIndex(0);
+      return;
+    }
     let cancelled = false;
     const fps = pack.fps || 30;
     const segment = loopMode && segments?.segments?.[0] ? segments.segments[0] : null;
@@ -288,13 +363,6 @@ export default function SessionPage() {
         idx = segmentStart + (idx % segmentLength);
       } else if (idx >= frames.length) {
         idx = frames.length - 1;
-        if (mode === "phrase" && !advanceRef.current && sequence.length > 1) {
-          advanceRef.current = true;
-          setTimeout(() => {
-            setCurrentIndex((prev) => Math.min(prev + 1, sequence.length - 1));
-            advanceRef.current = false;
-          }, 350);
-        }
       }
       setFrameIndex(idx);
       requestAnimationFrame(tick);
@@ -304,7 +372,7 @@ export default function SessionPage() {
     return () => {
       cancelled = true;
     };
-  }, [frames, pack, loopMode, segments, mode, sequence.length]);
+  }, [frames, pack, loopMode, segments, mode, sequence.length, practiceMode, isLearning]);
 
   const leftHand = useMemo(
     () => (results.leftHand ? results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
@@ -324,10 +392,13 @@ export default function SessionPage() {
 
   const currentFrame = frames[frameIndex] || null;
   const expertHandsBySide = useMemo(() => {
+    if (practiceMode === "normal") {
+      return { Left: null, Right: null };
+    }
     const left = currentFrame?.left_hand?.map(([x, y]) => [x, y] as Point2D) || null;
     const right = currentFrame?.right_hand?.map(([x, y]) => [x, y] as Point2D) || null;
     return { Left: left, Right: right };
-  }, [currentFrame]);
+  }, [currentFrame, practiceMode]);
 
   const mirrorAroundWrist = (hand: Point2D[]): Point2D[] => {
     const wristX = hand[0]?.[0] ?? 0.5;
@@ -350,12 +421,20 @@ export default function SessionPage() {
   }, [userHands, expertHandsBySide]);
 
   useEffect(() => {
+    if (practiceMode === "normal") {
+      scoringRef.current.Left.reset();
+      scoringRef.current.Right.reset();
+      setScore(0);
+      setTopErrors([]);
+      return;
+    }
     const active = alignedHands.filter((entry) => entry.ghost);
     if (!active.length) {
       scoringRef.current.Left.reset();
       scoringRef.current.Right.reset();
       setScore(0);
       setTopErrors([]);
+      holdStartRef.current = null;
       return;
     }
     const scores = active.map((entry) =>
@@ -364,22 +443,76 @@ export default function SessionPage() {
     const avgScore = scores.reduce((acc, s) => acc + s.overall, 0) / scores.length;
     setScore(avgScore);
     const primary = active.findIndex((entry) => entry.side === "Left");
-    setTopErrors(scores[primary >= 0 ? primary : 0]?.topJoints ?? []);
-  }, [alignedHands]);
+    const primaryScore = scores[primary >= 0 ? primary : 0];
+    setTopErrors(primaryScore?.topJoints ?? []);
+
+    if (!isLearning || !currentLesson) {
+      holdStartRef.current = null;
+      return;
+    }
+
+    const now = performance.now();
+    if (avgScore >= targetScore) {
+      if (!holdStartRef.current) {
+        holdStartRef.current = now;
+      }
+      if (now - holdStartRef.current >= holdDurationMs && !advanceRef.current) {
+        advanceRef.current = true;
+        holdStartRef.current = null;
+        if (mode === "phrase" && currentIndex < sequence.length - 1) {
+          setCurrentIndex((prev) => Math.min(prev + 1, sequence.length - 1));
+        } else {
+          setIsLearning(false);
+          const message =
+            mode === "phrase" && sequence.length > 1
+              ? "Nice work. You completed the phrase."
+              : "Nice work. Lesson complete.";
+          speak(message);
+        }
+      }
+    } else {
+      holdStartRef.current = null;
+      if (now - lastPromptRef.current >= 4500) {
+        lastPromptRef.current = now;
+        const prompt = cueFromTopJoints(primaryScore?.topJoints ?? []);
+        speak(prompt);
+      }
+    }
+  }, [
+    alignedHands,
+    practiceMode,
+    isLearning,
+    currentLesson?.id,
+    targetScore,
+    holdDurationMs,
+    mode,
+    currentIndex,
+    sequence.length,
+  ]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
   const displayedLesson = currentLesson?.name || "Loading lesson";
   const stepText =
-    mode === "phrase" && sequence.length > 1 ? `Step ${currentIndex + 1} of ${sequence.length}` : "Single lesson";
+    practiceMode === "normal"
+      ? "Normal tracking mode"
+      : mode === "phrase" && sequence.length > 1
+      ? `Step ${currentIndex + 1} of ${sequence.length}`
+      : "Single lesson";
+  const statusText =
+    practiceMode === "normal"
+      ? "Normal mode: verify tracking and alignment."
+      : isLearning
+      ? `Hold ≥${Math.round(targetScore)}% for ${holdSeconds}s to advance.`
+      : "Ready. Click Learn to start coaching.";
 
   useEffect(() => {
-    if (!currentLesson) return;
+    if (!currentLesson || !isLearning || practiceMode !== "guided") return;
     const label =
       currentLesson.type === "letter"
         ? `Spell letter ${currentLesson.id.replace("letter-", "").toUpperCase()}`
         : `Next sign: ${currentLesson.name.replace(/^Word /, "")}`;
     speak(label);
-  }, [currentLesson?.id]);
+  }, [currentLesson?.id, isLearning, practiceMode]);
 
   return (
     <main className="min-h-screen bg-bg-primary text-text-primary">
@@ -390,7 +523,11 @@ export default function SessionPage() {
             <h1 className="text-2xl font-semibold">ASL practice session</h1>
           </div>
           <div className="flex items-center gap-3">
-            <ScoreMeter score={score} />
+            {practiceMode === "guided" ? (
+              <ScoreMeter score={score} />
+            ) : (
+              <div className="text-sm text-text-secondary">Normal mode</div>
+            )}
             <Link href="/calibrate" className="text-sm text-text-secondary underline">
               Recalibrate
             </Link>
@@ -407,7 +544,9 @@ export default function SessionPage() {
               videoHeight={videoHeight}
               className="absolute inset-0"
               userHands={alignedHands.map((entry) => entry.user)}
-              ghostHands={alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : []))}
+              ghostHands={
+                practiceMode === "guided" ? alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : [])) : []
+              }
               mirror
               topErrors={topErrors}
             />
@@ -427,9 +566,50 @@ export default function SessionPage() {
               <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">Lesson</p>
               <p className="text-lg font-medium">{displayedLesson}</p>
               <p className="text-sm text-text-secondary mt-1">{stepText}</p>
+              <p className="text-xs text-text-secondary mt-2">{statusText}</p>
               {currentLesson?.description ? (
                 <p className="text-sm text-text-secondary mt-2">{currentLesson.description}</p>
               ) : null}
+            </div>
+
+            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-[0.2em] text-text-secondary">Practice</p>
+                <div className="flex gap-2">
+                  <button
+                    className={`px-3 py-1 rounded-full text-xs ${practiceMode === "normal" ? "bg-text-primary text-white" : "border border-border"}`}
+                    onClick={() => setPracticeMode("normal")}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded-full text-xs ${practiceMode === "guided" ? "bg-text-primary text-white" : "border border-border"}`}
+                    onClick={() => setPracticeMode("guided")}
+                  >
+                    Guided
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">{isLearning ? "Learning live" : "Ready to learn"}</p>
+                  <p className="text-xs text-text-secondary">Goal: match the ghost, then hold steady.</p>
+                </div>
+                <button
+                  className={`px-4 py-2 text-sm rounded-md ${isLearning ? "border border-border" : "bg-text-primary text-white"} disabled:opacity-60 disabled:cursor-not-allowed`}
+                  disabled={!isLearning && !canLearn}
+                  onClick={() => {
+                    if (isLearning) {
+                      setIsLearning(false);
+                      return;
+                    }
+                    if (!canLearn) return;
+                    setIsLearning(true);
+                  }}
+                >
+                  {isLearning ? "Stop" : "Learn"}
+                </button>
+              </div>
             </div>
 
             <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm space-y-3">
@@ -567,6 +747,10 @@ export default function SessionPage() {
                         .filter(Boolean)
                         .join(" + ")
                     : "None detected"}
+                </li>
+                <li>
+                  Coach:{" "}
+                  {practiceMode === "guided" ? (isLearning ? "Guided (active)" : "Guided (paused)") : "Normal"}
                 </li>
                 <li>Status: {loading ? "Starting MediaPipe..." : ready ? "Live" : "Waiting for camera"}</li>
                 {error ? <li className="text-error">Error: {error}</li> : null}
