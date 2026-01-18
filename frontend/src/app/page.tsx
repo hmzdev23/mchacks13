@@ -296,7 +296,7 @@ export default function LandingPage() {
               className="mb-8 flex items-center gap-3"
             >
               <span className="text-[10px] uppercase text-[var(--stone-500)] tracking-widest border border-[var(--stone-300)] rounded px-2 py-1" style={{ fontFamily: 'var(--font-mono)' }}>
-                SecondHand v2.0
+                SecondHand
               </span>
               <span className="h-[1px] w-12 bg-[var(--stone-300)]" />
               <span className="text-[10px] uppercase tracking-widest text-[var(--stone-500)]" style={{ fontFamily: 'var(--font-mono)' }}>
