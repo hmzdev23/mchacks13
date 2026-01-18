@@ -194,6 +194,10 @@ def main():
         "letter-q": -0.22,
     }
 
+    rest_curls = {"thumb": 0.45, "index": 0.55, "middle": 0.5, "ring": 0.55, "pinky": 0.6}
+    rest_spreads = {"index": -0.03, "middle": 0.0, "ring": 0.03, "pinky": 0.05}
+    rest_thumb_splay = -0.12
+
     word_specs = {
         "word-hello": {"base": "letter-b", "rot": 0.35},
         "word-thank-you": {"base": "letter-b", "rot": 0.2},
@@ -326,6 +330,10 @@ def main():
         ]
     }
     (output_dir / "phrases.json").write_text(json.dumps(phrases, indent=2))
+
+    rest_pose = build_hand_pose(rest_curls, spreads=rest_spreads, thumb_splay=rest_thumb_splay)
+    rest_frame = frame_from_points(rest_pose, 0, fps=fps)
+    (output_dir / "resting.json").write_text(json.dumps([rest_frame], indent=2))
 
 
 if __name__ == "__main__":

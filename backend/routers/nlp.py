@@ -28,6 +28,8 @@ class PhraseParseResponse(BaseModel):
     words: List[str]
     unknown_words: List[str]
     sequence: List[str]
+    gloss: str
+    lesson_hints: Dict[str, str]
 
 
 @router.post("/phrase", response_model=PhraseParseResponse)
@@ -45,6 +47,8 @@ async def parse_phrase(payload: PhraseParseRequest):
             words=result.words,
             unknown_words=result.unknown_words,
             sequence=result.sequence,
+            gloss=result.gloss,
+            lesson_hints=result.lesson_hints,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

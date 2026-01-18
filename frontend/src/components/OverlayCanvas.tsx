@@ -149,7 +149,7 @@ export function OverlayCanvas({
     userHands.forEach((hand, idx) =>
       drawSkeleton(hand, idx === 0 ? "#0f766e" : "#2563eb", { errors: idx === 0 ? topErrors : [] })
     );
-  }, [userHands, ghostHands, width, height, mirror, topErrors]);
+  }, [userHands, ghostHands, width, height, mirror, topErrors, videoWidth, videoHeight]);
 
   return <canvas ref={canvasRef} width={width} height={height} className={className} />;
 }

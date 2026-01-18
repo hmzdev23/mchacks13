@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera } from "@/components/Camera";
 import { OverlayCanvas } from "@/components/OverlayCanvas";
@@ -42,6 +42,8 @@ export default function SessionPage() {
   const [customPhrase, setCustomPhrase] = useState("");
   const [phraseError, setPhraseError] = useState<string | null>(null);
   const [nlpStatus, setNlpStatus] = useState<string | null>(null);
+  const [lessonHints, setLessonHints] = useState<Record<string, string>>({});
+  const [glossText, setGlossText] = useState<string | null>(null);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [selectedPhraseId, setSelectedPhraseId] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState("");
@@ -87,10 +89,8 @@ export default function SessionPage() {
     let cancelled = false;
     const loadRest = async () => {
       if (!pack) return;
-      const restLesson = pack.lessons.find((lesson) => lesson.id === "letter-b") || pack.lessons[0];
-      if (!restLesson) return;
       try {
-        const keypoints = await loadLessonKeypoints(restLesson.keypoints_url);
+        const keypoints = await loadLessonKeypoints("/packs/asl/resting.json");
         if (cancelled) return;
         setRestFrame(keypoints[0] ?? null);
       } catch (err) {
@@ -140,6 +140,13 @@ export default function SessionPage() {
     lastPromptRef.current = 0;
     advanceRef.current = false;
   }, [mode, phraseSource, selectedPhraseId, selectedLessonId, sequence]);
+
+  useEffect(() => {
+    if (mode !== "phrase" || phraseSource !== "custom") {
+      setLessonHints({});
+      setGlossText(null);
+    }
+  }, [mode, phraseSource, selectedPhraseId, selectedLessonId]);
 
   const currentLessonId = sequence[currentIndex] || "";
   const currentLesson: LessonMeta | null = useMemo(() => {
@@ -195,32 +202,35 @@ export default function SessionPage() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const speak = async (text: string) => {
-    if (!ttsEnabled) return;
-    try {
-      const response = await fetch(`${apiBase}/api/voice/synthesize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!response.ok) throw new Error("TTS failed");
-      const data = await response.json();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+  const speak = useCallback(
+    async (text: string) => {
+      if (!ttsEnabled) return;
+      try {
+        const response = await fetch(`${apiBase}/api/voice/synthesize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!response.ok) throw new Error("TTS failed");
+        const data = await response.json();
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+        const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
+        audioRef.current = audio;
+        await audio.play();
+      } catch (err) {
+        console.warn("TTS error, falling back to SpeechSynthesis");
+        if ("speechSynthesis" in window) {
+          const utterance = new SpeechSynthesisUtterance(text);
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+        }
       }
-      const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
-      audioRef.current = audio;
-      await audio.play();
-    } catch (err) {
-      console.warn("TTS error, falling back to SpeechSynthesis");
-      if ("speechSynthesis" in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-      }
-    }
-  };
+    },
+    [apiBase, ttsEnabled]
+  );
 
   useEffect(() => {
     if (!isLearning) {
@@ -289,6 +299,17 @@ export default function SessionPage() {
     }
 
     setPhraseError(null);
+    const hints: Record<string, string> = {};
+    sequenceIds.forEach((lessonId) => {
+      if (lessonId.startsWith("letter-")) {
+        const letter = lessonId.replace("letter-", "").toUpperCase();
+        hints[lessonId] = `Form the letter ${letter} hand shape.`;
+      } else {
+        hints[lessonId] = "Match the ghost hand shape and wrist angle.";
+      }
+    });
+    setLessonHints(hints);
+    setGlossText(tokens.join(" "));
     setSequence(sequenceIds);
     setCurrentIndex(0);
   };
@@ -323,6 +344,8 @@ export default function SessionPage() {
       setPhraseError(null);
       setSequence(data.sequence);
       setCurrentIndex(0);
+      setLessonHints(data.lesson_hints ?? {});
+      setGlossText(data.gloss ?? null);
       setNlpStatus(null);
     } catch (err: any) {
       console.warn("NLP error, falling back to deterministic parse", err);
@@ -505,17 +528,19 @@ export default function SessionPage() {
     alignedHands,
     practiceMode,
     isLearning,
-    currentLesson?.id,
+    currentLesson,
     targetScore,
     holdDurationMs,
     mode,
     currentIndex,
     sequence.length,
+    speak,
   ]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
   const displayedLesson =
     practiceMode === "normal" ? "Resting hand posture" : currentLesson?.name || "Loading lesson";
+  const currentHint = lessonHints[currentLessonId] ?? null;
   const stepText =
     practiceMode === "normal"
       ? "Normal tracking mode"
@@ -535,8 +560,9 @@ export default function SessionPage() {
       currentLesson.type === "letter"
         ? `Spell letter ${currentLesson.id.replace("letter-", "").toUpperCase()}`
         : `Next sign: ${currentLesson.name.replace(/^Word /, "")}`;
-    speak(label);
-  }, [currentLesson?.id, isLearning, practiceMode]);
+    const message = currentHint ? `${label}. ${currentHint}` : label;
+    speak(message);
+  }, [currentLesson, currentHint, isLearning, practiceMode, speak]);
 
   return (
     <main className="min-h-screen bg-bg-primary text-text-primary">
@@ -588,6 +614,8 @@ export default function SessionPage() {
               {currentLesson?.description ? (
                 <p className="text-sm text-text-secondary mt-2">{currentLesson.description}</p>
               ) : null}
+              {currentHint ? <p className="text-sm text-text-secondary mt-2">Coach tip: {currentHint}</p> : null}
+              {glossText ? <p className="text-xs text-text-secondary mt-2">ASL gloss: {glossText}</p> : null}
             </div>
 
             <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm space-y-3">
