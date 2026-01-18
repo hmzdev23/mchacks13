@@ -101,6 +101,87 @@ const messageFromScore = (score: number) => {
   return "Good effort. Run it again to lock in the moves.";
 };
 
+type ScorePoint = { t: number; v: number };
+
+const SCORE_SAMPLE_MS = 250;
+const MAX_SCORE_POINTS = 1200;
+
+const scoreToColor = (value: number) => {
+  if (value >= 80) return "#16a34a";
+  if (value >= 60) return "#f59e0b";
+  return "#ef4444";
+};
+
+const ScoreTrendChart = ({ points }: { points: ScorePoint[] }) => {
+  const chart = useMemo(() => {
+    if (!points.length) {
+      return { coords: [] as Array<{ x: number; y: number; v: number }>, segments: [] as Array<{ x1: number; y1: number; x2: number; y2: number; v: number }> };
+    }
+
+    const width = 180;
+    const height = 64;
+    const padding = 6;
+    const minT = points[0].t;
+    const maxT = points[points.length - 1].t;
+    const span = Math.max(1, maxT - minT);
+    const xSpan = width - padding * 2;
+    const ySpan = height - padding * 2;
+
+    const coords = points.map((point) => {
+      const x = padding + ((point.t - minT) / span) * xSpan;
+      const y = padding + (1 - point.v / 100) * ySpan;
+      return { x, y, v: point.v };
+    });
+
+    const segments = coords.slice(1).map((point, idx) => {
+      const prev = coords[idx];
+      return {
+        x1: prev.x,
+        y1: prev.y,
+        x2: point.x,
+        y2: point.y,
+        v: (prev.v + point.v) / 2,
+      };
+    });
+
+    return { coords, segments };
+  }, [points]);
+
+  return (
+    <div className="rounded-xl border border-border bg-bg-tertiary/70 px-3 py-2 shadow-sm min-w-[210px]">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-text-secondary">Score trend</span>
+        <span className="text-xs text-text-secondary">{points.length ? `${Math.round(points[points.length - 1].v)}%` : "--"}</span>
+      </div>
+      <svg width={180} height={64} viewBox="0 0 180 64" className="block">
+        <line x1="6" y1="58" x2="174" y2="58" stroke="rgba(148,163,184,0.35)" strokeWidth="1" />
+        <line x1="6" y1="32" x2="174" y2="32" stroke="rgba(148,163,184,0.2)" strokeWidth="1" />
+        <line x1="6" y1="6" x2="174" y2="6" stroke="rgba(148,163,184,0.2)" strokeWidth="1" />
+        {chart.segments.map((seg, idx) => (
+          <line
+            key={idx}
+            x1={seg.x1}
+            y1={seg.y1}
+            x2={seg.x2}
+            y2={seg.y2}
+            stroke={scoreToColor(seg.v)}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        ))}
+        {chart.coords.length > 0 ? (
+          <circle
+            cx={chart.coords[chart.coords.length - 1].x}
+            cy={chart.coords[chart.coords.length - 1].y}
+            r={3.2}
+            fill={scoreToColor(chart.coords[chart.coords.length - 1].v)}
+          />
+        ) : null}
+      </svg>
+    </div>
+  );
+};
+
 interface DanceModeProps {
   className?: string;
 }
@@ -114,6 +195,8 @@ export function DanceMode({ className }: DanceModeProps) {
   const sessionStatsRef = useRef({ sum: 0, count: 0, jointCounts: new Map<number, number>() });
   const completionRef = useRef(false);
   const scoringRef = useRef(new ScoringEngine({ mode: "positional", kScaling: 260, emaAlpha: 0.25 }));
+  const scoreSeriesRef = useRef<ScorePoint[]>([]);
+  const lastSeriesUpdateRef = useRef(0);
 
   const [pack, setPack] = useState<PackMeta | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState("");
@@ -133,6 +216,7 @@ export function DanceMode({ className }: DanceModeProps) {
   } | null>(null);
   const [score, setScore] = useState(0);
   const [topErrors, setTopErrors] = useState<number[]>([]);
+  const [scoreSeries, setScoreSeries] = useState<ScorePoint[]>([]);
 
   const { results, loading, ready, error } = useMediaPipePose(videoRef.current, {
     minPoseScore: 0.4,
@@ -180,6 +264,9 @@ export function DanceMode({ className }: DanceModeProps) {
     sessionStatsRef.current = { sum: 0, count: 0, jointCounts: new Map() };
     completionRef.current = false;
     setSessionComplete(null);
+    scoreSeriesRef.current = [];
+    setScoreSeries([]);
+    lastSeriesUpdateRef.current = 0;
   }, []);
   const finalizeSession = useCallback(() => {
     if (completionRef.current) return;
@@ -412,17 +499,37 @@ export function DanceMode({ className }: DanceModeProps) {
     }
   }, [userPose, alignedPose, isPlaying, isCountingDown]);
 
+  useEffect(() => {
+    if (!isPlaying || isCountingDown) return;
+    const now = performance.now();
+    if (now - lastSeriesUpdateRef.current < SCORE_SAMPLE_MS) return;
+    lastSeriesUpdateRef.current = now;
+    const elapsed = getElapsedMs();
+    const next = [...scoreSeriesRef.current, { t: elapsed, v: score }];
+    if (next.length > MAX_SCORE_POINTS) {
+      const downsampled = next.filter((_, idx) => idx % 2 === 0);
+      scoreSeriesRef.current = downsampled;
+      setScoreSeries(downsampled);
+      return;
+    }
+    scoreSeriesRef.current = next;
+    setScoreSeries(next);
+  }, [score, isPlaying, isCountingDown, getElapsedMs]);
+
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
   const displayedLesson = currentLesson?.name || "Loading routine";
 
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 flex-none pr-56">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-text-secondary">Dance Session</p>
           <h1 className="text-2xl font-semibold">Phantom choreography lab</h1>
         </div>
-        <ScoreMeter score={score} />
+        <div className="flex items-center gap-4">
+          <ScoreMeter score={score} />
+          <ScoreTrendChart points={scoreSeries} />
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[2fr_1fr] gap-6 items-start flex-1 min-h-0">

@@ -10,7 +10,7 @@ import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { alignHands, Point2D } from "@/lib/cv/alignment";
 import { ScoringEngine } from "@/lib/cv/scoring";
 import { addOuterPalmNode } from "@/lib/cv/landmarks";
-import { loadRestingPose } from "@/lib/packs/packLoader";
+import { loadLessonKeypoints, loadRestingPose } from "@/lib/packs/packLoader";
 import { KeypointFrame } from "@/lib/packs/types";
 
 function cueFromTopJoints(top: number[]) {
@@ -57,6 +57,13 @@ export function NormalMode({ className }: NormalModeProps) {
         setRestFrame(keypoints[0] ?? null);
       } catch (err) {
         console.warn("Rest pose load error, using default:", err);
+        try {
+          const fallback = await loadLessonKeypoints("/packs/asl/lessons/letter-b/keypoints.json");
+          if (cancelled) return;
+          setRestFrame(fallback[0] ?? null);
+        } catch (fallbackErr) {
+          console.warn("Fallback rest pose load error:", fallbackErr);
+        }
       }
     };
     loadRest();
@@ -114,6 +121,16 @@ export function NormalMode({ className }: NormalModeProps) {
     });
   }, [userHands, expertHandsBySide]);
 
+  const ghostHandsToDraw = useMemo(() => {
+    if (!showGhostOverlay) return [];
+    const alignedGhosts = alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : []));
+    if (alignedGhosts.length) return alignedGhosts;
+    const fallback: Point2D[][] = [];
+    if (expertHandsBySide.Left) fallback.push(expertHandsBySide.Left);
+    if (expertHandsBySide.Right) fallback.push(expertHandsBySide.Right);
+    return fallback;
+  }, [showGhostOverlay, alignedHands, expertHandsBySide]);
+
   useEffect(() => {
     const active = alignedHands.filter((entry) => entry.ghost);
     if (!active.length) {
@@ -138,7 +155,7 @@ export function NormalMode({ className }: NormalModeProps) {
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
       {/* Header */}
-      <header className="flex justify-between items-center mb-4 flex-none">
+      <header className="flex justify-between items-center mb-4 flex-none pr-56">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -181,9 +198,10 @@ export function NormalMode({ className }: NormalModeProps) {
               videoHeight={videoHeight}
               className="absolute inset-0 w-full h-full"
               userHands={alignedHands.map((entry) => entry.user)}
-              ghostHands={showGhostOverlay ? alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : [])) : []}
+              ghostHands={ghostHandsToDraw}
               mirror
               topErrors={topErrors}
+              ghostColor="rgba(148, 163, 184, 0.55)"
             />
 
             {(!ready || loading || error) && (
