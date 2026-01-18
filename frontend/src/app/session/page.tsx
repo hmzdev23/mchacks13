@@ -5,14 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Camera } from "@/components/Camera";
-import { OverlayCanvas } from "@/components/OverlayCanvas";
+import { HandOverlayCanvas } from "@/components/HandOverlayCanvas";
 import { ScoreMeter } from "@/components/ScoreMeter";
 import { ElevenLabsWidget } from "@/components/session/ElevenLabsWidget";
 import { useElementSize } from "@/hooks/useElementSize";
 import { useVideoMetrics } from "@/hooks/useVideoMetrics";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { alignHands, Point2D } from "@/lib/cv/alignment";
-import { classifyFingerStates, matchLetter, HandState } from "@/lib/cv/asl-logic";
+import { classifyFingerStates, matchLetter } from "@/lib/cv/asl-logic";
 import { ScoringEngine } from "@/lib/cv/scoring";
 import { useReferenceLandmarks } from "@/hooks/useReferenceLandmarks";
 import { LetterGrid } from "@/components/session/LetterGrid";
@@ -29,26 +29,20 @@ const JOINT_NAMES: Record<number, string> = {
 
 function cueFromTopJoints(top: number[]) {
   if (top.length === 0) return "Match the ghost hand closely.";
-
-  // Prioritize tips
   const tips = top.filter(id => [4, 8, 12, 16, 20].includes(id));
   if (tips.length > 0) {
     const jointName = JOINT_NAMES[tips[0]];
     return `Move your ${jointName} to match the ghost.`;
   }
-
-  // Fallback to other joints
   const jointName = JOINT_NAMES[top[0]];
   return `Adjust your ${jointName}.`;
 }
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-// Hold duration in ms
 const HOLD_DURATION = 1500;
 
 export default function SessionPage() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [score, setScore] = useState(0);
   const [topErrors, setTopErrors] = useState<number[]>([]);
@@ -68,21 +62,22 @@ export default function SessionPage() {
     Right: new ScoringEngine(),
   });
 
-  const { results, loading, ready, error } = useMediaPipe(videoRef.current, {
+  const { results, loading, ready, error } = useMediaPipe(videoElement, {
     swapHandedness: true,
     minHandScore: 0.5,
-    maxNumHands: 1, // Enforce 1 hand
-    minDetectionConfidence: 0.7, // Matched to SecondHand Draft
+    maxNumHands: 1,
+    minDetectionConfidence: 0.7,
   });
+
   const { width, height } = useElementSize(frameRef.current);
-  const { width: videoWidth, height: videoHeight } = useVideoMetrics(videoRef.current);
+  const { width: videoWidth, height: videoHeight } = useVideoMetrics(videoElement);
 
   const leftHand = useMemo(
-    () => (results.leftHand ? results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    () => (results.leftHand ? (results.leftHand.landmarks.map(([x, y]) => [x, y] as Point2D)) : null),
     [results]
   );
   const rightHand = useMemo(
-    () => (results.rightHand ? results.rightHand.landmarks.map(([x, y]) => [x, y] as Point2D) : null),
+    () => (results.rightHand ? (results.rightHand.landmarks.map(([x, y]) => [x, y] as Point2D)) : null),
     [results]
   );
 
@@ -94,13 +89,10 @@ export default function SessionPage() {
   }, [leftHand, rightHand, results]);
 
   const ghostHands = useMemo(() => {
-    if (hands.length === 0) {
-      return [referenceLandmarks];
-    }
-    return hands.map((hand) =>
-      alignHands(referenceLandmarks, hand.points).alignedExpert
-    );
+    if (hands.length === 0) return [referenceLandmarks];
+    return hands.map((hand) => alignHands(referenceLandmarks, hand.points).alignedExpert);
   }, [hands, referenceLandmarks]);
+
   const userHands = useMemo(() => hands.map((hand) => hand.points), [hands]);
 
   useEffect(() => {
@@ -114,48 +106,33 @@ export default function SessionPage() {
 
     const hand = hands[0];
     if (hand && hand.rawLandmarks) {
-      // 1. Boolean Accuracy (0-100)
       const fingerState = classifyFingerStates(hand.rawLandmarks);
       const { accuracy: booleanAccuracy } = matchLetter(fingerState, selectedLetter);
-
-      // 2. Geometric Score (0-100)
       const geometricResult = scoringRef.current[hand.side].score(hand.points, ghostHands[0]);
       const geometricScore = geometricResult.overall;
-
-      // 3. Combined Score (Weighted)
-      // Relaxed Logic: 70% Boolean (Easy), 30% Geometric (Hard)
       const combinedScore = (booleanAccuracy * 0.7) + (geometricScore * 0.3);
 
       setScore(combinedScore);
 
-      // 4. Hold Logic
       if (combinedScore >= 85 && !isCompleted) {
         const now = Date.now();
-        if (!holdStartTimeRef.current) {
-          holdStartTimeRef.current = now;
-        }
-
+        if (!holdStartTimeRef.current) holdStartTimeRef.current = now;
         const elapsed = now - holdStartTimeRef.current;
         const progress = Math.min(100, (elapsed / HOLD_DURATION) * 100);
         setHoldProgress(progress);
 
         if (elapsed >= HOLD_DURATION) {
           setIsCompleted(true);
-          setHoldProgress(100); // Ensure full ring
-          holdStartTimeRef.current = null; // Reset
+          setHoldProgress(100);
+          holdStartTimeRef.current = null;
         }
       } else {
-        // Reset if score drops
         holdStartTimeRef.current = null;
         setHoldProgress(0);
       }
 
-      // Errors
-      const scores = hands.map((hand, idx) => scoringRef.current[hand.side].score(hand.points, ghostHands[idx]));
-      const primaryIndex = hands.findIndex((hand) => hand.side === "Left");
-      setTopErrors(scores[primaryIndex >= 0 ? primaryIndex : 0]?.topJoints ?? []);
+      setTopErrors(geometricResult.topJoints ?? []);
     }
-
   }, [hands, ghostHands, selectedLetter, isCompleted]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
@@ -171,19 +148,14 @@ export default function SessionPage() {
 
   return (
     <main className="flex min-h-screen selection:bg-[var(--stone-300)] selection:text-[var(--stone-900)] bg-[var(--stone-100)]">
-      {/* Sidebar Navigation */}
       <Sidebar />
-
-      {/* Main Content Area */}
       <div className="ml-[70px] w-[calc(100%-70px)] p-6 md:p-8 flex flex-col h-screen overflow-hidden relative">
-
-        {/* Header */}
         <header className="flex justify-between items-center mb-6 flex-none">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <p className="text-[10px] uppercase tracking-widest text-[var(--stone-400)] font-medium" style={{ fontFamily: 'var(--font-mono)' }}>
-                Session Active
+                ASL Session Active
               </p>
             </div>
             <h1 className="text-3xl text-[var(--stone-900)] tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 200 }}>
@@ -230,14 +202,11 @@ export default function SessionPage() {
           </div>
         </header>
 
-        {/* Main Grid */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-
-          {/* Left Column: Camera (8 cols) */}
           <div className="lg:col-span-8 flex flex-col gap-6 h-full min-h-0">
-            <div ref={frameRef} className="glass-heavy rounded-2xl border border-white/50 overflow-hidden shadow-xl relative flex-1 min-h-0">
-              <Camera ref={videoRef} className="w-full h-full object-cover" mirrored />
-              <OverlayCanvas
+            <div ref={frameRef} className="glass-heavy rounded-2xl border border-white/50 overflow-hidden shadow-xl relative flex-1 min-h-0 bg-black">
+              <Camera ref={setVideoElement} className="w-full h-full object-cover" mirrored />
+              <HandOverlayCanvas
                 width={width}
                 height={height}
                 videoWidth={videoWidth}
@@ -249,7 +218,6 @@ export default function SessionPage() {
                 topErrors={topErrors}
               />
 
-              {/* Reference Image Overlay (Top Right) */}
               <div className="absolute top-4 right-4 w-32 h-32 rounded-xl overflow-hidden glass-panel border border-white/40 shadow-lg transition-opacity duration-300 hover:opacity-100 opacity-80 z-20">
                 <div className="relative w-full h-full bg-white">
                   <Image
@@ -261,7 +229,6 @@ export default function SessionPage() {
                 </div>
               </div>
 
-              {/* MediaPipe Status Overlay */}
               {(!ready || loading || error) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--stone-100)]/80 backdrop-blur-md z-20">
                   {loading ? (
@@ -280,8 +247,7 @@ export default function SessionPage() {
                 </div>
               )}
 
-              {/* Live Status Pill */}
-              <div className="absolute top-4 left-4 z-10 glass-panel px-3 py-1.5 rounded-full flex items-center gap-2">
+              <div className="absolute bottom-4 left-4 z-10 glass-panel px-3 py-1.5 rounded-full flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${ready && !loading ? 'bg-emerald-500 animate-pulse' : 'bg-[var(--stone-400)]'}`} />
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--stone-600)]">
                   {results.fps ? `${Math.round(results.fps)} FPS` : "Ready"}
@@ -289,7 +255,6 @@ export default function SessionPage() {
               </div>
             </div>
 
-            {/* Live Cue Banner OR Success Alert */}
             <div className="h-24 glass-nav rounded-xl p-6 flex flex-col justify-center border border-white/50 relative overflow-hidden flex-none">
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--stone-900)]" />
               <AnimatePresence mode="wait">
@@ -336,20 +301,14 @@ export default function SessionPage() {
             </div>
           </div>
 
-          {/* Right Column: Controls & AI (4 cols) */}
           <div className="lg:col-span-4 flex flex-col gap-6 h-full min-h-0">
-
-            {/* Score Card - Fixed height at top */}
             <div className={`glass-panel rounded-2xl p-6 border border-white/60 shadow-sm flex-none transition-colors duration-500 ${score >= 85 ? 'bg-emerald-50/50 border-emerald-200' : ''} relative overflow-hidden`}>
-
-              {/* Hold Progress Background */}
               {holdProgress > 0 && (
                 <div
                   className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-100 ease-linear z-10"
                   style={{ width: `${holdProgress}%` }}
                 />
               )}
-
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-[var(--stone-400)]" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -358,14 +317,12 @@ export default function SessionPage() {
                   <h2 className="text-4xl font-light text-[var(--stone-900)] mt-1" style={{ fontFamily: 'var(--font-heading)' }}>
                     {Math.round(score)}<span className="text-lg text-[var(--stone-400)] font-normal">%</span>
                   </h2>
-                  {/* Hold Instruction */}
                   {score >= 85 && holdProgress < 100 && (
                     <p className="text-xs text-emerald-600 font-bold animate-pulse mt-1">HOLD STEADY...</p>
                   )}
                 </div>
                 <div className="relative">
                   <ScoreMeter score={score} />
-                  {/* Optional: Add a ring around ScoreMeter for hold progress if preferred */}
                   {holdProgress > 0 && (
                     <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
                       <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500" strokeDasharray="289" strokeDashoffset={289 - (289 * holdProgress / 100)} />
@@ -380,14 +337,9 @@ export default function SessionPage() {
                 />
               </div>
             </div>
-
-            {/* AI Coach Widget - Grows to fill ALL remaining space */}
             <div className="glass-heavy rounded-2xl border border-white/50 shadow-lg relative overflow-hidden flex-1 min-h-[500px]">
               <ElevenLabsWidget feedback={`Score: ${Math.round(score)}%. Suggestion: ${cue}`} score={score} />
             </div>
-
-            {/* Removed Tracking Stats to give more room to AI Widget (stats are redundant or can be moved if needed) */}
-
           </div>
         </div>
       </div>
