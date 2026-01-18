@@ -336,7 +336,7 @@ export function ASLMode({ className }: ASLModeProps) {
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
       {/* Header */}
-      <header className="flex justify-between items-center mb-6 flex-none pr-32">
+      <header className="flex justify-between items-center mb-6 flex-none pr-52">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
