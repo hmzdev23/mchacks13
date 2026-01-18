@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { Camera } from "@/components/Camera";
 import { OverlayCanvas } from "@/components/OverlayCanvas";
 import { ScoreMeter } from "@/components/ScoreMeter";
+import { ElevenLabsWidget } from "@/components/session/ElevenLabsWidget";
 import { useElementSize } from "@/hooks/useElementSize";
 import { useVideoMetrics } from "@/hooks/useVideoMetrics";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
@@ -52,13 +54,15 @@ export default function SessionPage() {
     return entries;
   }, [leftHand, rightHand, results]);
 
-  const ghostHands = useMemo(
-    () =>
-      hands.map((hand) =>
-        alignHands(hand.side === "Left" ? expertHandLeft : expertHandRight, hand.points).alignedExpert
-      ),
-    [hands]
-  );
+  const ghostHands = useMemo(() => {
+    // If no hands detected, show a static default ghost (Right hand) as a prompt
+    if (hands.length === 0) {
+      return [expertHandRight];
+    }
+    return hands.map((hand) =>
+      alignHands(hand.side === "Left" ? expertHandLeft : expertHandRight, hand.points).alignedExpert
+    );
+  }, [hands]);
   const userHands = useMemo(() => hands.map((hand) => hand.points), [hands]);
 
   useEffect(() => {
@@ -79,76 +83,130 @@ export default function SessionPage() {
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
 
   return (
-    <main className="min-h-screen bg-bg-primary text-text-primary">
-      <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between mb-4">
+    <main className="flex min-h-screen selection:bg-[var(--stone-300)] selection:text-[var(--stone-900)] bg-[var(--stone-100)]">
+      {/* Sidebar Navigation */}
+      <Sidebar />
+
+      {/* Main Content Area */}
+      <div className="ml-[70px] w-[calc(100%-70px)] p-6 md:p-8 flex flex-col h-screen overflow-hidden">
+        {/* Header */}
+        <header className="flex justify-between items-center mb-6 flex-none">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-text-secondary">Session</p>
-            <h1 className="text-2xl font-semibold">Ghost overlay practice</h1>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] uppercase tracking-widest text-[var(--stone-400)] font-medium" style={{ fontFamily: 'var(--font-mono)' }}>
+                Session Active
+              </p>
+            </div>
+            <h1 className="text-3xl text-[var(--stone-900)] tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 200 }}>
+              Ghost Overlay Practice
+            </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <ScoreMeter score={score} />
-            <Link href="/calibrate" className="text-sm text-text-secondary underline">
-              Recalibrate
+
+          <div className="flex items-center gap-4">
+            <Link href="/calibrate">
+              <button className="btn-secondary text-xs px-4 py-2">
+                Recalibrate
+              </button>
+            </Link>
+            <Link href="/">
+              <button className="btn-primary text-xs px-4 py-2 bg-[var(--stone-900)] text-white hover:bg-[var(--stone-800)]">
+                End Session
+              </button>
             </Link>
           </div>
-        </div>
+        </header>
 
-        <div className="grid lg:grid-cols-[2fr_1fr] gap-6 items-start">
-          <div ref={frameRef} className="rounded-2xl border border-border overflow-hidden bg-white shadow-md relative">
-            <Camera ref={videoRef} className="aspect-video" mirrored />
-            <OverlayCanvas
-              width={width}
-              height={height}
-              videoWidth={videoWidth}
-              videoHeight={videoHeight}
-              className="absolute inset-0"
-              userHands={userHands}
-              ghostHands={ghostHands}
-              mirror
-              topErrors={topErrors}
-            />
-            {(!ready || loading || error) && (
-              <div className="absolute inset-0 grid place-items-center text-text-secondary text-sm bg-white/60 backdrop-blur-sm text-center px-4">
-                {error
-                  ? `Camera error: ${error}`
-                  : loading
-                  ? "Starting MediaPipe…"
-                  : "Allow camera to start the session…"}
+        {/* Main Grid */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+
+          {/* Left Column: Camera (8 cols) */}
+          <div className="lg:col-span-8 flex flex-col gap-6 h-full min-h-0">
+            <div ref={frameRef} className="glass-heavy rounded-2xl border border-white/50 overflow-hidden shadow-xl relative flex-1 min-h-0">
+              <Camera ref={videoRef} className="w-full h-full object-cover" mirrored />
+              <OverlayCanvas
+                width={width}
+                height={height}
+                videoWidth={videoWidth}
+                videoHeight={videoHeight}
+                className="absolute inset-0 w-full h-full"
+                userHands={userHands}
+                ghostHands={ghostHands}
+                mirror
+                topErrors={topErrors}
+              />
+
+              {/* MediaPipe Status Overlay */}
+              {(!ready || loading || error) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--stone-100)]/80 backdrop-blur-md z-20">
+                  {loading ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-8 h-8 rounded-full border-2 border-[var(--stone-300)] border-t-[var(--stone-900)] animate-spin" />
+                      <p className="text-sm font-medium text-[var(--stone-600)]">Initializing Hand Tracking...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="text-[var(--color-error)] text-center max-w-sm px-6">
+                      <p className="font-medium mb-1">Camera Error</p>
+                      <p className="text-sm opacity-80">{error}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--stone-500)]">Waiting for camera access...</p>
+                  )}
+                </div>
+              )}
+
+              {/* Live Status Pill */}
+              <div className="absolute top-4 left-4 z-10 glass-panel px-3 py-1.5 rounded-full flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${ready && !loading ? 'bg-emerald-500 animate-pulse' : 'bg-[var(--stone-400)]'}`} />
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--stone-600)]">
+                  {results.fps ? `${Math.round(results.fps)} FPS` : "Ready"}
+                </span>
               </div>
-            )}
+            </div>
+
+            {/* Live Cue Banner */}
+            <div className="h-24 glass-nav rounded-xl p-6 flex flex-col justify-center border border-white/50 relative overflow-hidden flex-none">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--stone-900)]" />
+              <p className="text-[10px] uppercase tracking-widest text-[var(--stone-400)] mb-1" style={{ fontFamily: 'var(--font-mono)' }}>
+                Live Correction
+              </p>
+              <p className="text-xl text-[var(--stone-800)] font-light" style={{ fontFamily: 'var(--font-heading)' }}>
+                {cue}
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">Live cue</p>
-              <p className="text-lg font-medium">{cue}</p>
-              <p className="text-sm text-text-secondary mt-2">Top joints: {topErrors.join(", ") || "tracking..."}</p>
+          {/* Right Column: Controls & AI (4 cols) */}
+          <div className="lg:col-span-4 flex flex-col gap-6 h-full min-h-0">
+
+            {/* Score Card - Fixed height at top */}
+            <div className="glass-panel rounded-2xl p-6 border border-white/60 shadow-sm flex-none">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--stone-400)]" style={{ fontFamily: 'var(--font-mono)' }}>
+                    Accuracy Score
+                  </p>
+                  <h2 className="text-4xl font-light text-[var(--stone-900)] mt-1" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {Math.round(score)}<span className="text-lg text-[var(--stone-400)] font-normal">%</span>
+                  </h2>
+                </div>
+                <ScoreMeter score={score} />
+              </div>
+              <div className="w-full bg-[var(--stone-200)] h-1 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[var(--stone-900)] transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+                />
+              </div>
             </div>
-            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">Tracking</p>
-              <ul className="text-sm text-text-secondary space-y-1">
-                <li>FPS: {results.fps || "…"}</li>
-                <li>
-                  Hands:{" "}
-                  {results.leftHand || results.rightHand
-                    ? [results.leftHand ? "Left" : null, results.rightHand ? "Right" : null]
-                        .filter(Boolean)
-                        .join(" + ")
-                    : "None detected"}
-                </li>
-                <li>Status: {loading ? "Starting MediaPipe…" : ready ? "Live" : "Waiting for camera"}</li>
-                {error ? <li className="text-error">Error: {error}</li> : null}
-              </ul>
+
+            {/* AI Coach Widget - Grows to fill ALL remaining space */}
+            <div className="glass-heavy rounded-2xl border border-white/50 shadow-lg relative overflow-hidden flex-1 min-h-[500px]">
+              <ElevenLabsWidget />
             </div>
-            <div className="p-5 rounded-xl border border-border bg-bg-tertiary shadow-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-text-secondary mb-2">How to use</p>
-              <ol className="text-sm text-text-secondary list-decimal list-inside space-y-1">
-                <li>Center your hand in the frame; keep fingers visible.</li>
-                <li>Slide your hand into the ghost outline.</li>
-                <li>Open/rotate fingers until the score rises.</li>
-              </ol>
-            </div>
+
+            {/* Removed Tracking Stats to give more room to AI Widget (stats are redundant or can be moved if needed) */}
+
           </div>
         </div>
       </div>
