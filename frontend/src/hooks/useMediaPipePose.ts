@@ -22,10 +22,19 @@ const INITIAL_RESULTS: MediaPipePoseResults = {
 interface UseMediaPipePoseOptions {
   minPoseScore?: number;
   modelComplexity?: 0 | 1 | 2;
+  targetFps?: number;
+  cameraWidth?: number;
+  cameraHeight?: number;
 }
 
 export function useMediaPipePose(videoElement: HTMLVideoElement | null, options: UseMediaPipePoseOptions = {}) {
-  const { minPoseScore = 0.5, modelComplexity = 1 } = options;
+  const {
+    minPoseScore = 0.5,
+    modelComplexity = 0,
+    targetFps = 24,
+    cameraWidth = 960,
+    cameraHeight = 540,
+  } = options;
   const [results, setResults] = useState<MediaPipePoseResults>(INITIAL_RESULTS);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
@@ -37,6 +46,7 @@ export function useMediaPipePose(videoElement: HTMLVideoElement | null, options:
   const lastFpsTimeRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
   const fpsRef = useRef<number>(0);
+  const lastSendRef = useRef<number>(0);
 
   useEffect(() => {
     if (!videoElement) return;
@@ -47,8 +57,8 @@ export function useMediaPipePose(videoElement: HTMLVideoElement | null, options:
         if (!streamRef.current) {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
+              width: { ideal: cameraWidth },
+              height: { ideal: cameraHeight },
               aspectRatio: 16 / 9,
               frameRate: { ideal: 30 },
             },
@@ -120,7 +130,12 @@ export function useMediaPipePose(videoElement: HTMLVideoElement | null, options:
           if (cancelled) return;
           if (videoElement.readyState >= 2) {
             try {
-              await pose.send({ image: videoElement });
+              const now = performance.now();
+              const interval = 1000 / Math.max(1, targetFps);
+              if (now - lastSendRef.current >= interval) {
+                lastSendRef.current = now;
+                await pose.send({ image: videoElement });
+              }
             } catch (err) {
               if (!cancelled) {
                 console.warn("MediaPipe pose warning:", err);
@@ -157,7 +172,7 @@ export function useMediaPipePose(videoElement: HTMLVideoElement | null, options:
         streamRef.current = null;
       }
     };
-  }, [videoElement, minPoseScore, modelComplexity]);
+  }, [videoElement, minPoseScore, modelComplexity, targetFps, cameraWidth, cameraHeight]);
 
   return { results, loading, ready, error };
 }

@@ -6,50 +6,39 @@
   "lessons": [
     {
       "id": "macarena",
-      "name": "Macarena Dance 2022",
+      "name": "Macarena - Los Del Rìo",
       "description": "Macarena routine captured from the 2022 demo.",
       "difficulty": "easy",
       "type": "dance",
       "keypoints_url": "/packs/dance/lessons/macarena/keypoints.json",
       "segments_url": "/packs/dance/lessons/macarena/segments.json",
       "fps": 25.0,
-      "duration_ms": 175200.0
+      "duration_ms": 175200.0,
+      "audio_url": "/packs/dance/lessons/macarena/audio.mp4"
     },
     {
-      "id": "savage-love",
-      "name": "Savage Love",
-      "description": "Smooth groove with alternating arm hits.",
+      "id": "just-dance",
+      "name": "Just Dance - Lady Gaga",
+      "description": "Just Dance routine captured from the greenscreen extraction.",
       "difficulty": "easy",
       "type": "dance",
-      "keypoints_url": "/packs/dance/lessons/savage-love/keypoints.json",
-      "segments_url": "/packs/dance/lessons/savage-love/segments.json"
+      "keypoints_url": "/packs/dance/lessons/just-dance/keypoints.json",
+      "segments_url": "/packs/dance/lessons/just-dance/segments.json",
+      "fps": 24.00009746232472,
+      "duration_ms": 246207.33350253807,
+      "audio_url": "/packs/dance/lessons/just-dance/audio.mp4"
     },
     {
-      "id": "renegade",
-      "name": "Renegade",
-      "description": "Quick arm snaps with energetic footwork.",
-      "difficulty": "medium",
-      "type": "dance",
-      "keypoints_url": "/packs/dance/lessons/renegade/keypoints.json",
-      "segments_url": "/packs/dance/lessons/renegade/segments.json"
-    },
-    {
-      "id": "blinding-lights",
-      "name": "Blinding Lights",
-      "description": "80s-inspired groove with wide steps.",
+      "id": "starships",
+      "name": "Starships - Nicki Minaj",
+      "description": "Starships routine captured from the greenscreen extraction.",
       "difficulty": "easy",
       "type": "dance",
-      "keypoints_url": "/packs/dance/lessons/blinding-lights/keypoints.json",
-      "segments_url": "/packs/dance/lessons/blinding-lights/segments.json"
-    },
-    {
-      "id": "say-so",
-      "name": "Say So",
-      "description": "Soft bounce with flowing arm sweeps.",
-      "difficulty": "easy",
-      "type": "dance",
-      "keypoints_url": "/packs/dance/lessons/say-so/keypoints.json",
-      "segments_url": "/packs/dance/lessons/say-so/segments.json"
+      "keypoints_url": "/packs/dance/lessons/starships/keypoints.json",
+      "segments_url": "/packs/dance/lessons/starships/segments.json",
+      "fps": 24.00011047231518,
+      "duration_ms": 217207.33352512465,
+      "audio_url": "/packs/dance/lessons/starships/audio.mp4"
     }
   ]
 }
