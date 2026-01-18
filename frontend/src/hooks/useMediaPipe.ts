@@ -25,10 +25,12 @@ const INITIAL_RESULTS: MediaPipeResults = {
 interface UseMediaPipeOptions {
   swapHandedness?: boolean;
   minHandScore?: number;
+  maxNumHands?: number;
+  minDetectionConfidence?: number;
 }
 
 export function useMediaPipe(videoElement: HTMLVideoElement | null, options: UseMediaPipeOptions = {}) {
-  const { swapHandedness = true, minHandScore = 0.55 } = options;
+  const { swapHandedness = true, minHandScore = 0.55, maxNumHands = 1, minDetectionConfidence = 0.7 } = options;
   const [results, setResults] = useState<MediaPipeResults>(INITIAL_RESULTS);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
@@ -80,10 +82,10 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null, options: Use
           locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`,
         });
         hands.setOptions({
-          maxNumHands: 2,
+          maxNumHands,
           modelComplexity: 1,
           selfieMode: false,
-          minDetectionConfidence: 0.7,
+          minDetectionConfidence,
           minTrackingConfidence: 0.5,
         });
 
@@ -169,7 +171,7 @@ export function useMediaPipe(videoElement: HTMLVideoElement | null, options: Use
         streamRef.current = null;
       }
     };
-  }, [videoElement, swapHandedness, minHandScore]);
+  }, [videoElement, swapHandedness, minHandScore, maxNumHands, minDetectionConfidence]);
 
   return { results, loading, ready, error };
 }

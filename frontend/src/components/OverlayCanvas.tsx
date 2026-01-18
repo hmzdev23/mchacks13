@@ -126,7 +126,7 @@ export function OverlayCanvas({
       });
     };
 
-    ghostHands.forEach((hand) => drawSkeleton(hand, "rgba(41,37,36,0.6)", true));
+    ghostHands.forEach((hand) => drawSkeleton(hand, "rgba(139, 92, 246, 0.6)", true));
     userHands.forEach((hand, idx) =>
       drawSkeleton(hand, idx === 0 ? "#0f766e" : "#2563eb", false, idx === 0 ? topErrors : [])
     );
