@@ -30,6 +30,7 @@ class PhraseParseResponse(BaseModel):
     sequence: List[str]
     gloss: str
     lesson_hints: Dict[str, str]
+    dynamic_lessons: Dict[str, Dict[str, str]] = {}
 
 
 @router.post("/phrase", response_model=PhraseParseResponse)
@@ -49,6 +50,7 @@ async def parse_phrase(payload: PhraseParseRequest):
             sequence=result.sequence,
             gloss=result.gloss,
             lesson_hints=result.lesson_hints,
+            dynamic_lessons=result.dynamic_lessons,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

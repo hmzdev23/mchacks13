@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { loadPack } from "@/lib/packs/packLoader";
+import { LessonMeta } from "@/lib/packs/types";
 
 interface PhraseInputProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (sequence: string[], gloss: string, hints: Record<string, string>) => void;
+  onSubmit: (
+    sequence: string[],
+    gloss: string,
+    hints: Record<string, string>,
+    dynamicLessons: Record<string, { word: string; label: string; keypoints_url: string; image_url: string }>
+  ) => void;
 }
 
 interface NLPResponse {
@@ -16,6 +23,7 @@ interface NLPResponse {
   sequence: string[];
   gloss: string;
   lesson_hints: Record<string, string>;
+  dynamic_lessons?: Record<string, { word: string; label: string; keypoints_url: string; image_url: string }>;
 }
 
 export function PhraseInput({ isOpen, onClose, onSubmit }: PhraseInputProps) {
@@ -23,8 +31,38 @@ export function PhraseInput({ isOpen, onClose, onSubmit }: PhraseInputProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [vocabulary, setVocabulary] = useState<string[]>([]);
+  const [vocabMap, setVocabMap] = useState<Record<string, string>>({});
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    loadPack("asl")
+      .then((pack) => {
+        if (cancelled) return;
+        const wordLessons = pack.lessons.filter((lesson) => lesson.type === "word");
+        const vocab: string[] = [];
+        const map: Record<string, string> = {};
+        wordLessons.forEach((lesson: LessonMeta) => {
+          const label = lesson.name.replace(/^Word\s+/i, "").trim().toLowerCase();
+          if (!label) return;
+          vocab.push(label);
+          map[label] = lesson.id;
+        });
+        setVocabulary(Array.from(new Set(vocab)));
+        setVocabMap(map);
+      })
+      .catch((err) => {
+        console.warn("Failed to load ASL vocab:", err);
+        setVocabulary([]);
+        setVocabMap({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   const handleSubmitWithNLP = useCallback(async () => {
     if (!phrase.trim()) {
@@ -44,8 +82,8 @@ export function PhraseInput({ isOpen, onClose, onSubmit }: PhraseInputProps) {
         body: JSON.stringify({
           phrase: phrase.trim(),
           max_words: 20,
-          vocabulary: [], // Will be populated by backend
-          vocab_map: {},
+          vocabulary,
+          vocab_map: vocabMap,
           letters: "abcdefghijklmnopqrstuvwxyz".split(""),
         }),
       });
@@ -62,7 +100,7 @@ export function PhraseInput({ isOpen, onClose, onSubmit }: PhraseInputProps) {
       }
 
       setStatus(null);
-      onSubmit(data.sequence, data.gloss, data.lesson_hints);
+      onSubmit(data.sequence, data.gloss, data.lesson_hints, data.dynamic_lessons || {});
       onClose();
       setPhrase("");
     } catch (err: any) {
@@ -95,7 +133,7 @@ export function PhraseInput({ isOpen, onClose, onSubmit }: PhraseInputProps) {
         }
         
         setStatus(null);
-        onSubmit(sequence, words.join(" "), hints);
+        onSubmit(sequence, words.join(" "), hints, {});
         onClose();
         setPhrase("");
       } catch (fallbackErr: any) {
@@ -105,7 +143,7 @@ export function PhraseInput({ isOpen, onClose, onSubmit }: PhraseInputProps) {
     } finally {
       setLoading(false);
     }
-  }, [phrase, apiBase, onSubmit, onClose]);
+  }, [phrase, apiBase, onSubmit, onClose, vocabulary, vocabMap]);
 
   return (
     <AnimatePresence>

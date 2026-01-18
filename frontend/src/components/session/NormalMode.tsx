@@ -10,7 +10,7 @@ import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { alignHands, Point2D } from "@/lib/cv/alignment";
 import { ScoringEngine } from "@/lib/cv/scoring";
 import { addOuterPalmNode } from "@/lib/cv/landmarks";
-import { loadRestingPose } from "@/lib/packs/packLoader";
+import { loadLessonKeypoints, loadRestingPose } from "@/lib/packs/packLoader";
 import { KeypointFrame } from "@/lib/packs/types";
 
 function cueFromTopJoints(top: number[]) {
@@ -36,6 +36,7 @@ export function NormalMode({ className }: NormalModeProps) {
   const [score, setScore] = useState(0);
   const [topErrors, setTopErrors] = useState<number[]>([]);
   const [restFrame, setRestFrame] = useState<KeypointFrame | null>(null);
+  const [showGhostOverlay, setShowGhostOverlay] = useState(true);
 
   const { results, loading, ready, error } = useMediaPipe(videoElement, {
     swapHandedness: true,
@@ -56,6 +57,13 @@ export function NormalMode({ className }: NormalModeProps) {
         setRestFrame(keypoints[0] ?? null);
       } catch (err) {
         console.warn("Rest pose load error, using default:", err);
+        try {
+          const fallback = await loadLessonKeypoints("/packs/asl/lessons/letter-b/keypoints.json");
+          if (cancelled) return;
+          setRestFrame(fallback[0] ?? null);
+        } catch (fallbackErr) {
+          console.warn("Fallback rest pose load error:", fallbackErr);
+        }
       }
     };
     loadRest();
@@ -113,6 +121,16 @@ export function NormalMode({ className }: NormalModeProps) {
     });
   }, [userHands, expertHandsBySide]);
 
+  const ghostHandsToDraw = useMemo(() => {
+    if (!showGhostOverlay) return [];
+    const alignedGhosts = alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : []));
+    if (alignedGhosts.length) return alignedGhosts;
+    const fallback: Point2D[][] = [];
+    if (expertHandsBySide.Left) fallback.push(expertHandsBySide.Left);
+    if (expertHandsBySide.Right) fallback.push(expertHandsBySide.Right);
+    return fallback;
+  }, [showGhostOverlay, alignedHands, expertHandsBySide]);
+
   useEffect(() => {
     const active = alignedHands.filter((entry) => entry.ghost);
     if (!active.length) {
@@ -137,7 +155,7 @@ export function NormalMode({ className }: NormalModeProps) {
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
       {/* Header */}
-      <header className="flex justify-between items-center mb-4 flex-none">
+      <header className="flex justify-between items-center mb-4 flex-none pr-56">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -149,7 +167,22 @@ export function NormalMode({ className }: NormalModeProps) {
             Resting Hand <span className="font-semibold">Calibration</span>
           </h1>
         </div>
-        <ScoreMeter score={score} />
+        <div className="flex items-center gap-4">
+          {/* Ghost Overlay Toggle */}
+          <button
+            onClick={() => setShowGhostOverlay(!showGhostOverlay)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${showGhostOverlay
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'bg-[var(--stone-200)] text-[var(--stone-600)]'
+              }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+            </svg>
+            {showGhostOverlay ? 'Ghost On' : 'Ghost Off'}
+          </button>
+          <ScoreMeter score={score} />
+        </div>
       </header>
 
       {/* Main Content */}
@@ -165,9 +198,10 @@ export function NormalMode({ className }: NormalModeProps) {
               videoHeight={videoHeight}
               className="absolute inset-0 w-full h-full"
               userHands={alignedHands.map((entry) => entry.user)}
-              ghostHands={alignedHands.flatMap((entry) => (entry.ghost ? [entry.ghost] : []))}
+              ghostHands={ghostHandsToDraw}
               mirror
               topErrors={topErrors}
+              ghostColor="rgba(148, 163, 184, 0.55)"
             />
 
             {(!ready || loading || error) && (
@@ -261,18 +295,31 @@ export function NormalMode({ className }: NormalModeProps) {
           </div>
 
           {/* Score Breakdown */}
-          <div className="glass-panel rounded-2xl p-5 border border-white/60 shadow-sm">
+          <div className={`glass-panel rounded-2xl p-5 border shadow-sm transition-colors duration-300 ${score >= 80 ? 'border-emerald-300 bg-emerald-50/50' : score >= 60 ? 'border-amber-300 bg-amber-50/50' : 'border-white/60'
+            }`}>
             <p className="text-[10px] uppercase tracking-widest text-[var(--stone-400)] mb-3" style={{ fontFamily: 'var(--font-mono)' }}>
-              Score
+              Alignment Score
             </p>
             <div className="text-4xl font-light text-[var(--stone-900)]" style={{ fontFamily: 'var(--font-heading)' }}>
               {Math.round(score)}<span className="text-lg text-[var(--stone-400)]">%</span>
             </div>
             <div className="mt-3 w-full bg-[var(--stone-200)] h-2 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 transition-all duration-300"
+                className={`h-full transition-all duration-300 ${score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : 'bg-blue-500'
+                  }`}
                 style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
               />
+            </div>
+            <div className="mt-3 text-sm">
+              {score >= 80 ? (
+                <p className="text-emerald-600 font-medium">✓ Excellent alignment! Ready to practice.</p>
+              ) : score >= 60 ? (
+                <p className="text-amber-600 font-medium">⚠ Good, but can be improved. Check the cue below.</p>
+              ) : score > 0 ? (
+                <p className="text-[var(--stone-500)]">Adjust your hand position to match the ghost overlay.</p>
+              ) : (
+                <p className="text-[var(--stone-400)]">Place your hands in view to start calibration.</p>
+              )}
             </div>
           </div>
 

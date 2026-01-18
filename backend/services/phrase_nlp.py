@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 import google.generativeai as genai
 
 from config import get_settings
+from services.dynamic_asl import DynamicASLGenerator, DynamicLesson
 
 settings = get_settings()
 genai.configure(api_key=settings.gemini_api_key)
@@ -27,6 +28,7 @@ class PhraseParseResult:
     sequence: List[str]
     gloss: str
     lesson_hints: Dict[str, str]
+    dynamic_lessons: Dict[str, Dict[str, str]]
 
 
 class PhraseNLP:
@@ -51,6 +53,7 @@ Rules:
         self.model = genai.GenerativeModel(
             model_name=settings.gemini_model, system_instruction=self.SYSTEM_PROMPT
         )
+        self.dynamic = DynamicASLGenerator()
 
     def _normalize(self, phrase: str) -> str:
         cleaned = (
@@ -111,6 +114,8 @@ Rules:
         unknown: List[str] = []
         gloss = ""
         hints: Dict[str, str] = {}
+        dynamic_by_word: Dict[str, DynamicLesson] = {}
+        dynamic_lessons: Dict[str, Dict[str, str]] = {}
 
         prompt = f"""Phrase: {normalized}
 Vocabulary: {json.dumps(vocabulary)}
@@ -138,23 +143,44 @@ Return JSON only."""
 
         if words:
             words = [word for word in words if word in vocabulary]
+        sequence_tokens = self._deterministic_parse(normalized, vocabulary)
         if not words:
-            words = self._deterministic_parse(normalized, vocabulary)
-            unknown = []
+            words = sequence_tokens
+
+        unknown = [token for token in sequence_tokens if token not in vocab_map]
+        if unknown:
+            try:
+                dynamic_by_word = self.dynamic.generate_batch(unknown)
+                dynamic_lessons = {
+                    lesson.lesson_id: {
+                        "word": lesson.word,
+                        "label": lesson.label,
+                        "keypoints_url": lesson.keypoints_url,
+                        "image_url": lesson.image_url,
+                    }
+                    for lesson in dynamic_by_word.values()
+                }
+            except Exception:
+                dynamic_by_word = {}
+                dynamic_lessons = {}
 
         # Build sequence by mapping to lesson IDs; fallback to letters
         sequence: List[str] = []
         lesson_hints: Dict[str, str] = {}
-        for word in words:
-            if word in vocab_map:
-                lesson_id = vocab_map[word]
+        for token in sequence_tokens:
+            if token in vocab_map:
+                lesson_id = vocab_map[token]
                 sequence.append(lesson_id)
-                hint = hints.get(word)
+                hint = hints.get(token)
                 if hint:
                     lesson_hints[lesson_id] = hint
+            elif token in dynamic_by_word:
+                lesson = dynamic_by_word[token]
+                sequence.append(lesson.lesson_id)
+                lesson_hints[lesson.lesson_id] = f"Match the {lesson.label} sign closely."
             else:
-                unknown.append(word)
-                for ch in word:
+                unknown.append(token)
+                for ch in token:
                     if ch in letters:
                         lesson_id = f"letter-{ch}"
                         sequence.append(lesson_id)
@@ -163,7 +189,7 @@ Return JSON only."""
                     else:
                         raise ValueError(f"Unsupported character: {ch}")
 
-        unknown = sorted(set(unknown))
+        unknown = sorted({word for word in unknown if word not in dynamic_by_word})
         if not gloss:
             gloss = " ".join(words)
         for lesson_id in sequence:
@@ -176,4 +202,5 @@ Return JSON only."""
             sequence=sequence,
             gloss=gloss,
             lesson_hints=lesson_hints,
+            dynamic_lessons=dynamic_lessons,
         )

@@ -5,7 +5,7 @@ import { AnimatedCircularProgressBar } from "@/components/ui/animated-circular-p
 interface ScoreMeterProps {
   score: number;
   trend?: number;
-  className?: string;
+  className?: string; // Allow external sizing/positioning
 }
 
 export function ScoreMeter({ score, className }: ScoreMeterProps) {
