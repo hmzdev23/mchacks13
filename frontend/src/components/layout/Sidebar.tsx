@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSessionStore, SessionMode } from "@/store/sessionStore";
+import { AuroraText } from "@/components/ui/aurora-text";
 
 // Sidebar icons component
 const SidebarIcon = ({ type }: { type: string }) => {
@@ -88,22 +89,14 @@ export function Sidebar() {
     const isSessionPage = pathname === '/session';
 
     return (
-        <aside className="fixed z-50 flex flex-col bg-[var(--stone-100)]/80 w-[70px] h-screen border-r border-[var(--stone-200)] pt-8 pb-8 top-0 left-0 backdrop-blur-md items-center justify-between">
-            {/* Logo */}
-            <Link href="/" className="flex flex-col items-center gap-1 cursor-pointer group">
-                <div className="w-8 h-8 bg-[var(--stone-900)] rounded-full flex items-center justify-center text-white font-bold text-xs tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
-                    SH
-                </div>
-                <span className="text-[10px] tracking-widest opacity-0 group-hover:opacity-100 transition-opacity absolute top-16" style={{ fontFamily: 'var(--font-heading)' }}>
-                    SECOND
-                </span>
-            </Link>
+        <aside className="fixed z-50 flex flex-col bg-[var(--stone-900)] w-[70px] h-screen border-r border-[var(--stone-800)] pt-8 pb-8 top-0 left-0 items-center justify-between">
+
 
             {/* Mode Switcher (only on session page) */}
             {isSessionPage ? (
                 <nav className="flex flex-col gap-4 w-full items-center">
-                    <div className="w-8 h-px bg-[var(--stone-300)] mb-2" />
-                    <span className="text-[8px] uppercase tracking-widest text-[var(--stone-400)] mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
+                    <div className="w-8 h-px bg-[var(--stone-700)] mb-2" />
+                    <span className="text-[8px] uppercase tracking-widest text-[var(--stone-500)] mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
                         Mode
                     </span>
                     {modeItems.map((item) => (
@@ -111,17 +104,17 @@ export function Sidebar() {
                             key={item.mode}
                             onClick={() => setMode(item.mode)}
                             className={`group relative p-3 rounded-xl transition-all ${mode === item.mode
-                                    ? "bg-[var(--stone-900)] text-white shadow-lg"
-                                    : "text-[var(--stone-600)] hover:bg-[var(--stone-200)] hover:text-black"
+                                ? "bg-white text-[var(--stone-900)] shadow-lg"
+                                : "text-[var(--stone-400)] hover:bg-[var(--stone-800)] hover:text-white"
                                 }`}
                         >
                             <SidebarIcon type={item.icon} />
-                            <span className="absolute left-14 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 pointer-events-none">
+                            <span className="absolute left-14 bg-white text-[var(--stone-900)] text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 pointer-events-none">
                                 {item.label}
                             </span>
                         </button>
                     ))}
-                    <div className="w-8 h-px bg-[var(--stone-300)] mt-2" />
+                    <div className="w-8 h-px bg-[var(--stone-700)] mt-2" />
                 </nav>
             ) : (
                 /* Nav Items (on other pages) */
@@ -131,12 +124,12 @@ export function Sidebar() {
                             key={item.icon}
                             href={item.href}
                             className={`group relative p-3 rounded-xl transition-colors ${pathname === item.href
-                                    ? "bg-[var(--stone-200)] text-black"
-                                    : "text-[var(--stone-600)] hover:bg-[var(--stone-200)] hover:text-black"
+                                ? "bg-[var(--stone-800)] text-white"
+                                : "text-[var(--stone-400)] hover:bg-[var(--stone-800)] hover:text-white"
                                 }`}
                         >
                             <SidebarIcon type={item.icon} />
-                            <span className="absolute left-14 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 pointer-events-none">
+                            <span className="absolute left-14 bg-white text-[var(--stone-900)] text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 pointer-events-none">
                                 {item.label}
                             </span>
                         </Link>
@@ -147,8 +140,8 @@ export function Sidebar() {
             {/* Status */}
             <div className="flex flex-col items-center gap-4">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="vertical-text text-[10px] text-[var(--stone-400)] uppercase tracking-widest rotate-180" style={{ fontFamily: 'var(--font-mono)' }}>
-                    {isSessionPage ? mode.toUpperCase() : 'System Online'}
+                <span className="vertical-text text-[10px] uppercase tracking-widest rotate-180" style={{ fontFamily: 'var(--font-mono)' }}>
+                    <AuroraText>{isSessionPage ? mode.toUpperCase() : 'System Online'}</AuroraText>
                 </span>
             </div>
         </aside>
