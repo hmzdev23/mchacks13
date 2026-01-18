@@ -12,6 +12,7 @@ interface OverlayCanvasProps {
   userHands: Point2D[][];
   ghostHands: Point2D[][];
   topErrors?: number[];
+  ghostOpacity?: number;
   className?: string;
 }
 
@@ -50,6 +51,7 @@ export function OverlayCanvas({
   userHands,
   ghostHands,
   topErrors = [],
+  ghostOpacity = 0.6,
   className,
 }: OverlayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -126,11 +128,12 @@ export function OverlayCanvas({
       });
     };
 
-    ghostHands.forEach((hand) => drawSkeleton(hand, "rgba(139, 92, 246, 0.6)", true));
+    const ghostColor = `rgba(139, 92, 246, ${ghostOpacity})`;
+    ghostHands.forEach((hand) => drawSkeleton(hand, ghostColor, true));
     userHands.forEach((hand, idx) =>
       drawSkeleton(hand, idx === 0 ? "#0f766e" : "#2563eb", false, idx === 0 ? topErrors : [])
     );
-  }, [userHands, ghostHands, width, height, mirror, topErrors]);
+  }, [userHands, ghostHands, width, height, mirror, topErrors, ghostOpacity]);
 
   return <canvas ref={canvasRef} width={width} height={height} className={className} />;
 }

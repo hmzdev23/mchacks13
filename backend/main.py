@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
-from routers import coaching, voice, packs, preprocessing, reference
+from routers import coaching, voice, packs, preprocessing, reference, nlp, feedback
 
 settings = get_settings()
 
@@ -52,6 +52,8 @@ app.include_router(voice.router, prefix="/api/voice", tags=["Voice"])
 app.include_router(packs.router, prefix="/api/packs", tags=["Packs"])
 app.include_router(preprocessing.router, prefix="/api/preprocessing", tags=["Preprocessing"])
 app.include_router(reference.router, prefix="/api/reference", tags=["Reference"])
+app.include_router(nlp.router, prefix="/api/nlp", tags=["NLP"])
+app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
 
 
 @app.get("/")

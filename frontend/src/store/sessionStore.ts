@@ -7,6 +7,9 @@
 
 import { create } from "zustand";
 
+export type SessionMode = 'asl' | 'dance' | 'normal';
+export type ASLContentType = 'letter' | 'word' | 'phrase';
+
 export interface Keypoints {
     leftHand: number[][] | null;
     rightHand: number[][] | null;
@@ -26,6 +29,10 @@ export interface Cue {
 }
 
 interface SessionState {
+    // Mode
+    mode: SessionMode;
+    aslContentType: ASLContentType;
+    
     // Session info
     packId: string | null;
     lessonId: string | null;
@@ -65,6 +72,8 @@ interface SessionState {
     totalFrames: number;
 
     // Actions
+    setMode: (mode: SessionMode) => void;
+    setASLContentType: (type: ASLContentType) => void;
     setPackAndLesson: (packId: string, lessonId: string, lessonName: string) => void;
     startSession: () => void;
     pauseSession: () => void;
@@ -92,6 +101,9 @@ const initialKeypoints: Keypoints = {
 
 export const useSessionStore = create<SessionState>((set, get) => ({
     // Initial state
+    mode: 'asl' as SessionMode,
+    aslContentType: 'letter' as ASLContentType,
+    
     packId: null,
     lessonId: null,
     lessonName: null,
@@ -128,6 +140,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     totalFrames: 0,
 
     // Actions
+    setMode: (mode) => set({ mode }),
+    
+    setASLContentType: (aslContentType) => set({ aslContentType }),
+    
     setPackAndLesson: (packId, lessonId, lessonName) =>
         set({ packId, lessonId, lessonName }),
 
@@ -232,6 +248,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     },
 
     reset: () => set({
+        mode: 'asl' as SessionMode,
+        aslContentType: 'letter' as ASLContentType,
         packId: null,
         lessonId: null,
         lessonName: null,

@@ -30,7 +30,7 @@ interface UseMediaPipeOptions {
 }
 
 export function useMediaPipe(videoElement: HTMLVideoElement | null, options: UseMediaPipeOptions = {}) {
-  const { swapHandedness = true, minHandScore = 0.55, maxNumHands = 1, minDetectionConfidence = 0.7 } = options;
+  const { swapHandedness = true, minHandScore = 0.55, maxNumHands = 2, minDetectionConfidence = 0.7 } = options;
   const [results, setResults] = useState<MediaPipeResults>(INITIAL_RESULTS);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
