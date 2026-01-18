@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # Gemini settings
     gemini_model: str = "gemini-2.0-flash"
 
+    # Google Custom Search (image lookup)
+    google_cse_api_key: str = ""
+    google_cse_cx: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -68,6 +68,9 @@ export function ASLMode({ className }: ASLModeProps) {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [phraseGloss, setPhraseGloss] = useState<string>("");
   const [phraseHints, setPhraseHints] = useState<Record<string, string>>({});
+  const [dynamicLessons, setDynamicLessons] = useState<
+    Record<string, { word: string; label: string; keypoints_url: string; image_url: string }>
+  >({});
 
   // Pack data for words
   const [packLessons, setPackLessons] = useState<LessonMeta[]>([]);
@@ -140,6 +143,20 @@ export function ASLMode({ className }: ASLModeProps) {
       return;
     }
 
+    const dynamicLesson = dynamicLessons[activeWordLessonId];
+    if (dynamicLesson) {
+      loadLessonKeypoints(dynamicLesson.keypoints_url)
+        .then((frames: KeypointFrame[]) => {
+          if (cancelled) return;
+          setWordFrames(frames);
+          setWordFrameIndex(0);
+        })
+        .catch((err) => console.error("Failed to load dynamic word keypoints:", err));
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const lesson = packLessons.find((l) => l.id === activeWordLessonId);
     if (!lesson) {
       setWordFrames([]);
@@ -158,7 +175,7 @@ export function ASLMode({ className }: ASLModeProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeWordLessonId, packLessons]);
+  }, [activeWordLessonId, packLessons, dynamicLessons]);
 
   const currentWordFrame = useMemo(() => {
     if (!wordFrames.length) return null;
@@ -367,10 +384,17 @@ export function ASLMode({ className }: ASLModeProps) {
     holdStartTimeRef.current = null;
   }, []);
 
-  const handlePhraseSubmit = useCallback((sequence: string[], gloss: string, hints: Record<string, string>) => {
+  const handlePhraseSubmit = useCallback(
+    (
+      sequence: string[],
+      gloss: string,
+      hints: Record<string, string>,
+      dynamic: Record<string, { word: string; label: string; keypoints_url: string; image_url: string }>
+    ) => {
     setPhraseSequence(sequence);
     setPhraseGloss(gloss);
     setPhraseHints(hints);
+    setDynamicLessons(dynamic);
     setPhraseIndex(0);
     setIsCompleted(false);
     setHoldProgress(0);
@@ -385,8 +409,10 @@ export function ASLMode({ className }: ASLModeProps) {
       return currentLessonId.replace('letter-', '').toUpperCase();
     }
     const lesson = packLessons.find(l => l.id === currentLessonId);
-    return lesson?.name.replace('Word ', '') || currentLessonId;
-  }, [phraseSequence, phraseIndex, packLessons]);
+    if (lesson) return lesson.name.replace('Word ', '');
+    const dynamic = dynamicLessons[currentLessonId];
+    return dynamic?.label || currentLessonId;
+  }, [phraseSequence, phraseIndex, packLessons, dynamicLessons]);
 
   // Get title based on content type
   const getTitle = () => {
@@ -427,6 +453,10 @@ export function ASLMode({ className }: ASLModeProps) {
         return { src: `/asl-images/${letter}.png`, alt: `ASL Letter ${letter}` };
       }
       if (currentLessonId) {
+        const dynamic = dynamicLessons[currentLessonId];
+        if (dynamic?.image_url) {
+          return { src: dynamic.image_url, alt: `ASL Word ${dynamic.label}` };
+        }
         const data = getWordData(currentLessonId);
         return {
           src: data?.image || getWordImage(currentLessonId),
@@ -435,7 +465,7 @@ export function ASLMode({ className }: ASLModeProps) {
       }
     }
     return { src: `/asl-images/${selectedLetter}.png`, alt: `ASL Letter ${selectedLetter}` };
-  }, [contentType, selectedWordId, selectedLetter, phraseSequence, phraseIndex]);
+  }, [contentType, selectedWordId, selectedLetter, phraseSequence, phraseIndex, dynamicLessons]);
 
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
@@ -600,12 +630,20 @@ export function ASLMode({ className }: ASLModeProps) {
             {/* Reference Image */}
             <div className="absolute top-4 right-4 w-32 h-32 rounded-xl overflow-hidden glass-panel border border-white/40 shadow-lg transition-opacity duration-300 hover:opacity-100 opacity-80 z-20">
               <div className="relative w-full h-full bg-white">
-                <Image
-                  src={referenceImage.src}
-                  alt={referenceImage.alt}
-                  fill
-                  className="object-contain p-2"
-                />
+                {referenceImage.src.startsWith("http") ? (
+                  <img
+                    src={referenceImage.src}
+                    alt={referenceImage.alt}
+                    className="absolute inset-0 w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <Image
+                    src={referenceImage.src}
+                    alt={referenceImage.alt}
+                    fill
+                    className="object-contain p-2"
+                  />
+                )}
               </div>
             </div>
 
