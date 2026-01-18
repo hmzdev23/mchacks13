@@ -1,0 +1,55 @@
+{
+  "id": "dance",
+  "name": "Dance Studio",
+  "description": "Full-body dance routines with ghost choreography overlays.",
+  "fps": 30,
+  "lessons": [
+    {
+      "id": "macarena",
+      "name": "Macarena Dance 2022",
+      "description": "Macarena routine captured from the 2022 demo.",
+      "difficulty": "easy",
+      "type": "dance",
+      "keypoints_url": "/packs/dance/lessons/macarena/keypoints.json",
+      "segments_url": "/packs/dance/lessons/macarena/segments.json",
+      "fps": 25.0,
+      "duration_ms": 175200.0
+    },
+    {
+      "id": "savage-love",
+      "name": "Savage Love",
+      "description": "Smooth groove with alternating arm hits.",
+      "difficulty": "easy",
+      "type": "dance",
+      "keypoints_url": "/packs/dance/lessons/savage-love/keypoints.json",
+      "segments_url": "/packs/dance/lessons/savage-love/segments.json"
+    },
+    {
+      "id": "renegade",
+      "name": "Renegade",
+      "description": "Quick arm snaps with energetic footwork.",
+      "difficulty": "medium",
+      "type": "dance",
+      "keypoints_url": "/packs/dance/lessons/renegade/keypoints.json",
+      "segments_url": "/packs/dance/lessons/renegade/segments.json"
+    },
+    {
+      "id": "blinding-lights",
+      "name": "Blinding Lights",
+      "description": "80s-inspired groove with wide steps.",
+      "difficulty": "easy",
+      "type": "dance",
+      "keypoints_url": "/packs/dance/lessons/blinding-lights/keypoints.json",
+      "segments_url": "/packs/dance/lessons/blinding-lights/segments.json"
+    },
+    {
+      "id": "say-so",
+      "name": "Say So",
+      "description": "Soft bounce with flowing arm sweeps.",
+      "difficulty": "easy",
+      "type": "dance",
+      "keypoints_url": "/packs/dance/lessons/say-so/keypoints.json",
+      "segments_url": "/packs/dance/lessons/say-so/segments.json"
+    }
+  ]
+}
