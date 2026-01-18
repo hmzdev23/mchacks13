@@ -1,0 +1,458 @@
+{
+  "id": "asl",
+  "name": "ASL Essentials",
+  "description": "Letters, words, and phrases for foundational ASL practice.",
+  "fps": 30,
+  "lessons": [
+    {
+      "id": "letter-a",
+      "name": "Letter A",
+      "description": "ASL Letter A",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-a/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-a/segments.json"
+    },
+    {
+      "id": "letter-b",
+      "name": "Letter B",
+      "description": "ASL Letter B",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-b/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-b/segments.json"
+    },
+    {
+      "id": "letter-c",
+      "name": "Letter C",
+      "description": "ASL Letter C",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-c/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-c/segments.json"
+    },
+    {
+      "id": "letter-d",
+      "name": "Letter D",
+      "description": "ASL Letter D",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-d/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-d/segments.json"
+    },
+    {
+      "id": "letter-e",
+      "name": "Letter E",
+      "description": "ASL Letter E",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-e/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-e/segments.json"
+    },
+    {
+      "id": "letter-f",
+      "name": "Letter F",
+      "description": "ASL Letter F",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-f/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-f/segments.json"
+    },
+    {
+      "id": "letter-g",
+      "name": "Letter G",
+      "description": "ASL Letter G",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-g/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-g/segments.json"
+    },
+    {
+      "id": "letter-h",
+      "name": "Letter H",
+      "description": "ASL Letter H",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-h/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-h/segments.json"
+    },
+    {
+      "id": "letter-i",
+      "name": "Letter I",
+      "description": "ASL Letter I",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-i/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-i/segments.json"
+    },
+    {
+      "id": "letter-j",
+      "name": "Letter J",
+      "description": "ASL Letter J",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-j/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-j/segments.json"
+    },
+    {
+      "id": "letter-k",
+      "name": "Letter K",
+      "description": "ASL Letter K",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-k/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-k/segments.json"
+    },
+    {
+      "id": "letter-l",
+      "name": "Letter L",
+      "description": "ASL Letter L",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-l/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-l/segments.json"
+    },
+    {
+      "id": "letter-m",
+      "name": "Letter M",
+      "description": "ASL Letter M",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-m/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-m/segments.json"
+    },
+    {
+      "id": "letter-n",
+      "name": "Letter N",
+      "description": "ASL Letter N",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-n/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-n/segments.json"
+    },
+    {
+      "id": "letter-o",
+      "name": "Letter O",
+      "description": "ASL Letter O",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-o/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-o/segments.json"
+    },
+    {
+      "id": "letter-p",
+      "name": "Letter P",
+      "description": "ASL Letter P",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-p/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-p/segments.json"
+    },
+    {
+      "id": "letter-q",
+      "name": "Letter Q",
+      "description": "ASL Letter Q",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-q/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-q/segments.json"
+    },
+    {
+      "id": "letter-r",
+      "name": "Letter R",
+      "description": "ASL Letter R",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-r/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-r/segments.json"
+    },
+    {
+      "id": "letter-s",
+      "name": "Letter S",
+      "description": "ASL Letter S",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-s/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-s/segments.json"
+    },
+    {
+      "id": "letter-t",
+      "name": "Letter T",
+      "description": "ASL Letter T",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-t/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-t/segments.json"
+    },
+    {
+      "id": "letter-u",
+      "name": "Letter U",
+      "description": "ASL Letter U",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-u/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-u/segments.json"
+    },
+    {
+      "id": "letter-v",
+      "name": "Letter V",
+      "description": "ASL Letter V",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-v/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-v/segments.json"
+    },
+    {
+      "id": "letter-w",
+      "name": "Letter W",
+      "description": "ASL Letter W",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-w/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-w/segments.json"
+    },
+    {
+      "id": "letter-x",
+      "name": "Letter X",
+      "description": "ASL Letter X",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-x/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-x/segments.json"
+    },
+    {
+      "id": "letter-y",
+      "name": "Letter Y",
+      "description": "ASL Letter Y",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-y/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-y/segments.json"
+    },
+    {
+      "id": "letter-z",
+      "name": "Letter Z",
+      "description": "ASL Letter Z",
+      "difficulty": "easy",
+      "type": "letter",
+      "keypoints_url": "/packs/asl/lessons/letter-z/keypoints.json",
+      "segments_url": "/packs/asl/lessons/letter-z/segments.json"
+    },
+    {
+      "id": "word-hello",
+      "name": "Word Hello",
+      "description": "ASL Word Hello",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-hello/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-hello/segments.json"
+    },
+    {
+      "id": "word-thank-you",
+      "name": "Word Thank You",
+      "description": "ASL Word Thank You",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-thank-you/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-thank-you/segments.json"
+    },
+    {
+      "id": "word-please",
+      "name": "Word Please",
+      "description": "ASL Word Please",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-please/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-please/segments.json"
+    },
+    {
+      "id": "word-sorry",
+      "name": "Word Sorry",
+      "description": "ASL Word Sorry",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-sorry/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-sorry/segments.json"
+    },
+    {
+      "id": "word-yes",
+      "name": "Word Yes",
+      "description": "ASL Word Yes",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-yes/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-yes/segments.json"
+    },
+    {
+      "id": "word-no",
+      "name": "Word No",
+      "description": "ASL Word No",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-no/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-no/segments.json"
+    },
+    {
+      "id": "word-love",
+      "name": "Word Love",
+      "description": "ASL Word Love",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-love/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-love/segments.json"
+    },
+    {
+      "id": "word-help",
+      "name": "Word Help",
+      "description": "ASL Word Help",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-help/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-help/segments.json"
+    },
+    {
+      "id": "word-good",
+      "name": "Word Good",
+      "description": "ASL Word Good",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-good/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-good/segments.json"
+    },
+    {
+      "id": "word-morning",
+      "name": "Word Morning",
+      "description": "ASL Word Morning",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-morning/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-morning/segments.json"
+    },
+    {
+      "id": "word-night",
+      "name": "Word Night",
+      "description": "ASL Word Night",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-night/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-night/segments.json"
+    },
+    {
+      "id": "word-name",
+      "name": "Word Name",
+      "description": "ASL Word Name",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-name/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-name/segments.json"
+    },
+    {
+      "id": "word-my",
+      "name": "Word My",
+      "description": "ASL Word My",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-my/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-my/segments.json"
+    },
+    {
+      "id": "word-is",
+      "name": "Word Is",
+      "description": "ASL Word Is",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-is/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-is/segments.json"
+    },
+    {
+      "id": "word-you",
+      "name": "Word You",
+      "description": "ASL Word You",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-you/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-you/segments.json"
+    },
+    {
+      "id": "word-me",
+      "name": "Word Me",
+      "description": "ASL Word Me",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-me/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-me/segments.json"
+    },
+    {
+      "id": "word-we",
+      "name": "Word We",
+      "description": "ASL Word We",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-we/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-we/segments.json"
+    },
+    {
+      "id": "word-friend",
+      "name": "Word Friend",
+      "description": "ASL Word Friend",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-friend/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-friend/segments.json"
+    },
+    {
+      "id": "word-learn",
+      "name": "Word Learn",
+      "description": "ASL Word Learn",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-learn/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-learn/segments.json"
+    },
+    {
+      "id": "word-work",
+      "name": "Word Work",
+      "description": "ASL Word Work",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-work/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-work/segments.json"
+    },
+    {
+      "id": "word-school",
+      "name": "Word School",
+      "description": "ASL Word School",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-school/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-school/segments.json"
+    },
+    {
+      "id": "word-nice",
+      "name": "Word Nice",
+      "description": "ASL Word Nice",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-nice/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-nice/segments.json"
+    },
+    {
+      "id": "word-meet",
+      "name": "Word Meet",
+      "description": "ASL Word Meet",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-meet/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-meet/segments.json"
+    },
+    {
+      "id": "word-to",
+      "name": "Word To",
+      "description": "ASL Word To",
+      "difficulty": "medium",
+      "type": "word",
+      "keypoints_url": "/packs/asl/lessons/word-to/keypoints.json",
+      "segments_url": "/packs/asl/lessons/word-to/segments.json"
+    }
+  ]
+}

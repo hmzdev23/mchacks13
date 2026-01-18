@@ -1,0 +1,104 @@
+{
+  "phrases": [
+    {
+      "id": "hello",
+      "text": "Hello",
+      "sequence": [
+        "word-hello"
+      ]
+    },
+    {
+      "id": "thank-you",
+      "text": "Thank you",
+      "sequence": [
+        "word-thank-you"
+      ]
+    },
+    {
+      "id": "please",
+      "text": "Please",
+      "sequence": [
+        "word-please"
+      ]
+    },
+    {
+      "id": "sorry",
+      "text": "Sorry",
+      "sequence": [
+        "word-sorry"
+      ]
+    },
+    {
+      "id": "yes-no",
+      "text": "Yes or no",
+      "sequence": [
+        "word-yes",
+        "word-no"
+      ]
+    },
+    {
+      "id": "i-love-you",
+      "text": "I love you",
+      "sequence": [
+        "word-love"
+      ]
+    },
+    {
+      "id": "help-me",
+      "text": "Help me",
+      "sequence": [
+        "word-help"
+      ]
+    },
+    {
+      "id": "good-morning",
+      "text": "Good morning",
+      "sequence": [
+        "word-good",
+        "word-morning"
+      ]
+    },
+    {
+      "id": "good-night",
+      "text": "Good night",
+      "sequence": [
+        "word-good",
+        "word-night"
+      ]
+    },
+    {
+      "id": "my-name-is",
+      "text": "My name is",
+      "sequence": [
+        "word-my",
+        "word-name",
+        "word-is"
+      ]
+    },
+    {
+      "id": "nice-to-meet-you",
+      "text": "Nice to meet you",
+      "sequence": [
+        "word-nice",
+        "word-to",
+        "word-meet",
+        "word-you"
+      ]
+    },
+    {
+      "id": "we-learn",
+      "text": "We learn",
+      "sequence": [
+        "word-we",
+        "word-learn"
+      ]
+    },
+    {
+      "id": "friend",
+      "text": "Friend",
+      "sequence": [
+        "word-friend"
+      ]
+    }
+  ]
+}
