@@ -835,3 +835,84 @@ video::-webkit-media-controls-enclosure {
   height: 55%;
   background: linear-gradient(135deg, #d6d3d1 0%, #a8a29e 100%);
 }
+
+/* Marquee Animation */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
+}
+
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--duration) linear infinite;
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical var(--duration) linear infinite;
+}
+
+/* Scroll Velocity Animation */
+@keyframes scroll-velocity {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.animate-scan {
+  animation: scan 2s linear infinite;
+}
+
+.mask-radial-to-90\% {
+  mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
+}
+
+.mask-radial-at-center {
+  /* Just a placeholder if needed, or combines with above */
+}
+
+@keyframes aurora-text {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-aurora-text {
+  animation: aurora-text 3s ease infinite;
+}

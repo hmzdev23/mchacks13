@@ -8,8 +8,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { MagicCard } from "@/components/ui/magic-card";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import { DotPattern } from "@/components/ui/dot-pattern";
+import { LayoutTextFlip } from "@/components/ui/layout-text-flip";
+import { Terminal, TypingAnimation, AnimatedSpan } from "@/components/ui/terminal";
+import { AuroraText } from "@/components/ui/aurora-text";
+import { CanvasRevealEffect } from "@/components/ui/canvas-reveal-effect";
+import { DottedGlowBackground } from "@/components/ui/dotted-glow-background";
+import { cn } from "@/lib/utils";
 
 // Skill packs data
 const packs = [
@@ -235,16 +244,8 @@ export default function LandingPage() {
   return (
     <main className="flex min-h-screen selection:bg-[var(--stone-300)] selection:text-[var(--stone-900)]">
       {/* Left Sidebar */}
-      <aside className="fixed z-50 flex flex-col bg-[var(--stone-100)]/80 w-[70px] h-screen border-r border-[var(--stone-200)] pt-8 pb-8 top-0 left-0 backdrop-blur-md items-center justify-between">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-1 cursor-pointer group">
-          <div className="w-8 h-8 bg-[var(--stone-900)] rounded-full flex items-center justify-center text-white font-bold text-xs tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
-            SH
-          </div>
-          <span className="text-[10px] tracking-widest opacity-0 group-hover:opacity-100 transition-opacity absolute top-16" style={{ fontFamily: 'var(--font-heading)' }}>
-            SECOND
-          </span>
-        </div>
+      <aside className="fixed z-50 flex flex-col bg-[var(--stone-900)] w-[70px] h-screen border-r border-[var(--stone-800)] pt-8 pb-8 top-0 left-0 items-center justify-between">
+
 
         {/* Nav Items */}
         <nav className="flex flex-col gap-8 w-full items-center">
@@ -252,10 +253,10 @@ export default function LandingPage() {
             <a
               key={item.icon}
               href={item.href}
-              className="group relative p-3 rounded-xl hover:bg-[var(--stone-200)] transition-colors text-[var(--stone-600)] hover:text-black"
+              className="group relative p-3 rounded-xl hover:bg-[var(--stone-800)] transition-colors text-[var(--stone-400)] hover:text-white"
             >
               <SidebarIcon type={item.icon} />
-              <span className="absolute left-14 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 pointer-events-none">
+              <span className="absolute left-14 bg-white text-[var(--stone-900)] text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 pointer-events-none">
                 {item.label}
               </span>
             </a>
@@ -265,8 +266,8 @@ export default function LandingPage() {
         {/* Status */}
         <div className="flex flex-col items-center gap-4">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="vertical-text text-[10px] text-[var(--stone-400)] uppercase tracking-widest rotate-180" style={{ fontFamily: 'var(--font-mono)' }}>
-            System Online
+          <span className="vertical-text text-[10px] uppercase tracking-widest rotate-180" style={{ fontFamily: 'var(--font-mono)' }}>
+            <AuroraText>System Online</AuroraText>
           </span>
         </div>
       </aside>
@@ -275,10 +276,15 @@ export default function LandingPage() {
       <div className="ml-[70px] w-[calc(100%-70px)] relative">
         {/* Hero Section */}
         <section className="relative flex flex-col min-h-screen w-full border-b border-[var(--stone-200)] bg-[var(--stone-100)]/30 overflow-hidden">
-          {/* Hero Image Background */}
-          <div className="absolute right-0 top-0 h-full w-1/2 opacity-10 pointer-events-none mix-blend-multiply">
-            <div className="h-full w-full bg-gradient-to-l from-[var(--stone-400)] via-[var(--stone-300)] to-[var(--stone-100)] filter grayscale contrast-125" />
-            <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[var(--stone-100)]/50 to-[var(--stone-100)]" />
+          {/* Hero Image Background - only covers top portion */}
+          <div className="absolute top-0 left-0 right-0 h-[70vh] pointer-events-none overflow-hidden">
+            <img
+              src="/hero-bg.png"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-30"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--stone-100)] via-[var(--stone-100)]/70 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--stone-100)] via-transparent to-[var(--stone-100)]/60" />
           </div>
 
           {/* Main Hero Content */}
@@ -298,38 +304,30 @@ export default function LandingPage() {
               </span>
             </motion.div>
 
-            <h1 className="text-[clamp(3rem,6vw,6.5rem)] leading-[0.9] text-[var(--stone-900)] tracking-tighter mb-8" style={{ fontFamily: 'var(--font-heading)', fontWeight: 200 }}>
-              <motion.span
-                className="block"
+            <h1
+              className="text-[clamp(3rem,6vw,6.5rem)] leading-[0.95] text-[var(--stone-900)] tracking-tighter mb-8"
+              style={{ fontFamily: "var(--font-heading)", fontWeight: 200 }}
+            >
+              <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6 }}
               >
-                MOTION.
-              </motion.span>
-              <motion.span
-                className="block text-[var(--stone-400)]"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                TRACKED.
-              </motion.span>
-              <motion.span
-                className="block"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                MASTERED.
-              </motion.span>
+                <LayoutTextFlip
+                  text="Welcome to"
+                  words={["SecondHand", "Ghost Learning", "Live Coaching", "Motion Mastery"]}
+                  intervalMs={2200}
+                  className="flex-row items-baseline gap-4"
+                  wordClassName="text-[var(--stone-400)]"
+                />
+              </motion.div>
             </h1>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="text-lg md:text-xl text-[var(--stone-600)] font-light max-w-xl mb-12 leading-relaxed tracking-tight"
+              className="text-lg md:text-xl text-[var(--stone-700)] font-normal max-w-xl mb-12 leading-relaxed tracking-tight"
             >
               Learn from invisible teachers. An AI-powered platform for mastering gestures, signs, and physical skills through real-time AR overlay.
             </motion.p>
@@ -341,12 +339,19 @@ export default function LandingPage() {
               className="flex flex-wrap gap-6 items-center"
             >
               <Link href="/calibrate?pack=sign-language">
-                <button className="btn-primary flex items-center gap-3 text-sm shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
+                <HoverBorderGradient
+                  containerClassName="rounded-full"
+                  as="button"
+                  className="bg-white text-[var(--stone-800)] flex items-center gap-2 text-sm font-medium tracking-tight"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                  </svg>
                   Launch App
-                </button>
+                </HoverBorderGradient>
               </Link>
 
-              <a href="#how-it-works" className="group flex items-center gap-2 hover:text-[var(--stone-900)] hover:border-[var(--stone-900)] transition-all text-sm text-[var(--stone-500)] border-b border-transparent pb-0.5" style={{ fontFamily: 'var(--font-mono)' }}>
+              <a href="#how-it-works" className="group flex items-center gap-2 hover:text-black transition-all text-sm text-[var(--stone-700)] border-b border-[var(--stone-400)] pb-0.5" style={{ fontFamily: 'var(--font-mono)' }}>
                 HOW IT WORKS
                 <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-7-7l7 7-7 7" />
@@ -378,105 +383,235 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Dual Cards Section */}
-            <div className="w-full bg-[var(--stone-950)] border-t border-[var(--stone-800)]">
-              <div className="max-w-7xl mx-auto px-6 md:px-12 py-20 grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Dual Cards Section - Redesigned */}
+            <div className="w-full bg-gradient-to-b from-[var(--stone-100)] to-[var(--stone-50)] border-t border-[var(--stone-200)] py-20">
+              <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Card 1: For Learners */}
-                <div className="group card-feature-dark rounded-xl p-8 md:p-10">
-                  <div className="relative z-10 flex flex-col h-full gap-6">
-                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/10 text-white icon-container-scale">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-2xl text-white font-normal tracking-tight mb-3" style={{ fontFamily: 'var(--font-heading)' }}>
-                        For Learners
-                      </h3>
-                      <p className="text-sm text-[var(--stone-300)] font-light leading-relaxed">
-                        Master sign language, CPR, piano, and more with ghost overlay technology. Get real-time AI feedback and track your progress through every practice session.
-                      </p>
-                    </div>
-                    <div className="mt-auto pt-4 border-t border-white/10 w-full">
-                      <Link href="/calibrate?pack=sign-language">
-                        <button className="btn-beam w-full group">
-                          <span className="btn-beam-static" />
-                          <span className="btn-beam-inner">
+                <MagicCard
+                  gradientColor="#a8a29e55"
+                  gradientSize={250}
+                  className="bg-white/60 backdrop-blur-xl border border-[var(--stone-200)] hover:shadow-xl transition-all duration-500"
+                >
+                  <div className="p-8 md:p-10">
+                    <div className="flex flex-col h-full gap-6">
+                      <div className="w-14 h-14 rounded-2xl bg-[var(--stone-900)] flex items-center justify-center text-white shadow-lg">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+                        </svg>
+                      </div>
+
+                      <div className="flex-grow">
+                        <h3 className="text-2xl text-[var(--stone-900)] font-normal tracking-tight mb-3" style={{ fontFamily: 'var(--font-heading)' }}>
+                          For Learners
+                        </h3>
+                        <p className="text-sm text-[var(--stone-500)] font-light leading-relaxed">
+                          Master sign language, CPR, piano, and more with ghost overlay technology. Get real-time AI feedback and track your progress through every practice session.
+                        </p>
+                      </div>
+
+                      <div className="pt-6 border-t border-[var(--stone-200)]">
+                        <Link href="/calibrate?pack=sign-language">
+                          <button className="w-full py-3 px-6 rounded-xl bg-[var(--stone-900)] text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--stone-800)] transition-colors group/btn">
                             Start Learning
-                            <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-7-7l7 7-7 7" />
                             </svg>
-                          </span>
-                        </button>
-                      </Link>
+                          </button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </MagicCard>
 
                 {/* Card 2: For Creators */}
-                <div className="group relative overflow-hidden rounded-xl bg-white/5 border border-white/10 p-8 md:p-10 backdrop-blur-md hover:bg-white/10 transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative z-10 flex flex-col h-full gap-6">
-                    <div className="w-12 h-12 rounded-full bg-[var(--stone-100)] text-[var(--stone-900)] flex items-center justify-center border border-white/10 icon-container-scale">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-2xl text-white font-normal tracking-tight mb-3" style={{ fontFamily: 'var(--font-heading)' }}>
-                        For Creators
-                      </h3>
-                      <p className="text-sm text-[var(--stone-300)] font-light leading-relaxed">
-                        Record your expertise and share it with the world. Create skill packs that teach through motion, complete with AI-generated feedback loops.
-                      </p>
-                    </div>
-                    <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between cursor-pointer">
-                      <span className="text-[10px] uppercase group-hover:text-white transition-colors text-[var(--stone-400)] tracking-widest" style={{ fontFamily: 'var(--font-mono)' }}>
-                        Coming Soon
-                      </span>
-                      <svg className="w-4 h-4 text-[var(--stone-400)] group-hover:text-white transition-colors group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-7-7l7 7-7 7" />
-                      </svg>
+                <MagicCard
+                  gradientColor="#d6d3d155"
+                  gradientSize={250}
+                  className="bg-white/40 backdrop-blur-xl border border-[var(--stone-200)] hover:shadow-xl transition-all duration-500"
+                >
+                  <div className="p-8 md:p-10">
+                    <div className="flex flex-col h-full gap-6">
+                      <div className="w-14 h-14 rounded-2xl bg-[var(--stone-100)] border border-[var(--stone-200)] flex items-center justify-center text-[var(--stone-600)]">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                      </div>
+
+                      <div className="flex-grow">
+                        <h3 className="text-2xl text-[var(--stone-900)] font-normal tracking-tight mb-3" style={{ fontFamily: 'var(--font-heading)' }}>
+                          For Creators
+                        </h3>
+                        <p className="text-sm text-[var(--stone-500)] font-light leading-relaxed">
+                          Record your expertise and share it with the world. Create skill packs that teach through motion, complete with AI-generated feedback loops.
+                        </p>
+                      </div>
+
+                      <div className="pt-6 border-t border-[var(--stone-200)] flex items-center justify-between">
+                        <span className="text-xs uppercase text-[var(--stone-400)] tracking-widest" style={{ fontFamily: 'var(--font-mono)' }}>
+                          Coming Soon
+                        </span>
+                        <div className="flex items-center gap-2 text-[var(--stone-400)]">
+                          <span className="text-xs">Learn More</span>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-7-7l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </MagicCard>
               </div>
             </div>
           </div>
         </section>
 
-        {/* What SecondHand Is (Manifesto) */}
+        {/* What SecondHand Is (Manifesto) - Bento Grid */}
         <section className="py-32 px-12 lg:px-24 border-b border-[var(--stone-200)]" id="manifesto">
           <div
             ref={setRevealRef(0)}
-            className={`grid grid-cols-1 md:grid-cols-12 gap-16 transition-all duration-700 ${activeReveal.has(0) ? "opacity-100 translate-y-0 blur-0" : "opacity-0 translate-y-12 blur-sm"}`}
+            className={`max-w-7xl mx-auto transition-all duration-700 ${activeReveal.has(0) ? "opacity-100 translate-y-0 blur-0" : "opacity-0 translate-y-12 blur-sm"}`}
           >
-            <div className="md:col-span-4">
-              <h2 className="text-[32px] tracking-tight leading-tight text-[var(--stone-900)] mb-6" style={{ fontFamily: 'var(--font-heading)', fontWeight: 200 }}>
-                AI-Powered.
-                <br />
-                Human Perfected.
+            {/* Header */}
+            <div className="mb-16">
+              <span className="text-xs uppercase tracking-widest text-[var(--stone-400)] block mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
+                Core Features
+              </span>
+              <h2 className="text-[40px] tracking-tight text-[var(--stone-900)]" style={{ fontFamily: 'var(--font-heading)', fontWeight: 200 }}>
+                AI-Powered. Human Perfected.
               </h2>
-              <p className="text-sm text-[var(--stone-500)] leading-relaxed max-w-xs">
-                SecondHand removes the friction of traditional learning while amplifying the feedback that drives mastery.
-              </p>
             </div>
 
-            <div className="md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className={`p-8 border border-[var(--stone-200)] ${index === 3 ? 'bg-[var(--stone-900)] text-white' : 'bg-white hover:shadow-lg'} transition-shadow duration-500 group`}
-                >
-                  <div className={`w-8 h-8 mb-6 transition-colors ${index === 3 ? 'text-[var(--stone-500)] group-hover:text-white' : 'text-[var(--stone-300)] group-hover:text-black'}`}>
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-lg font-normal mb-3" style={{ fontFamily: 'var(--font-heading)' }}>{feature.title}</h3>
-                  <p className={`text-xs leading-relaxed ${index === 3 ? 'text-[var(--stone-400)]' : 'text-[var(--stone-500)]'}`}>
-                    {feature.description}
-                  </p>
+            {/* Bento Grid */}
+            <div className="grid w-full auto-rows-[20rem] grid-cols-3 gap-4">
+              {/* Card 1: Hand Tracking - spans 1 col */}
+              <div className="group relative col-span-3 lg:col-span-1 flex flex-col justify-between overflow-hidden rounded-xl bg-[var(--stone-900)] border border-[var(--stone-800)] shadow-sm hover:shadow-lg transition-all duration-300">
+                {/* Background - Dotted Glow Effect */}
+                <div className="absolute inset-0 z-0 overflow-hidden opacity-40 group-hover:opacity-100 transition-opacity duration-500">
+                  <DottedGlowBackground
+                    className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
+                    opacity={1}
+                    gap={10}
+                    radius={1.6}
+                    color="rgba(255, 255, 255, 0.1)"
+                    glowColor="rgba(255, 255, 255, 0.8)"
+                    backgroundOpacity={0}
+                    speedMin={0.3}
+                    speedMax={1.6}
+                    speedScale={1}
+                  />
+
+                  {/* Scanning Line - Emerald */}
+                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent via-emerald-500/20 to-transparent -translate-y-full group-hover:animate-scan transition-all duration-1000" />
                 </div>
-              ))}
+                {/* Content */}
+                <div className="pointer-events-none z-10 flex flex-col gap-1 p-6 mt-auto transition-all duration-300 group-hover:-translate-y-2">
+                  <svg className="h-10 w-10 origin-left text-[var(--stone-500)] transition-transform duration-300 ease-in-out group-hover:scale-75 mb-2 group-hover:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                  <h3 className="text-xl font-semibold text-white" style={{ fontFamily: 'var(--font-heading)' }}>MediaPipe Tracking</h3>
+                  <p className="text-sm text-[var(--stone-400)]">21-point hand tracking with real-time gesture analysis.</p>
+                </div>
+              </div>
+
+              {/* Card 2: AI Voice Coach - spans 2 cols */}
+              <div className="group relative col-span-3 lg:col-span-2 flex flex-col justify-between overflow-hidden rounded-xl bg-white border border-[var(--stone-200)] shadow-sm hover:shadow-lg transition-all duration-300">
+                {/* Background - Animated waveform */}
+                <div className="absolute inset-0 z-0">
+                  <div className="absolute top-4 right-4 h-[200px] w-full scale-90 opacity-60 [mask-image:linear-gradient(to_top,transparent_10%,#000_100%)] transition-all duration-300 group-hover:scale-100 group-hover:opacity-80">
+                    <div className="flex items-center justify-center h-full gap-1">
+                      {[...Array(40)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-1 bg-[var(--stone-400)] rounded-full animate-pulse"
+                          style={{
+                            height: `${Math.random() * 60 + 20}%`,
+                            animationDelay: `${i * 0.05}s`,
+                            animationDuration: `${0.5 + Math.random() * 0.5}s`
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Content */}
+                <div className="pointer-events-none z-10 flex flex-col gap-1 p-6 mt-auto transition-all duration-300 group-hover:-translate-y-2">
+                  <svg className="h-10 w-10 origin-left text-[var(--stone-400)] transition-transform duration-300 ease-in-out group-hover:scale-75 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                  </svg>
+                  <h3 className="text-xl font-semibold text-[var(--stone-900)]" style={{ fontFamily: 'var(--font-heading)' }}>AI Voice Coach</h3>
+                  <p className="text-sm text-[var(--stone-500)]">Real-time voice feedback powered by ElevenLabs. Get corrections and encouragement as you practice.</p>
+                </div>
+              </div>
+
+              {/* Card 3: Ghost Overlay - spans 2 cols */}
+              <div className="group relative col-span-3 lg:col-span-2 flex flex-col justify-between overflow-hidden rounded-xl bg-white border border-[var(--stone-200)] shadow-sm hover:shadow-lg transition-all duration-300">
+                {/* Background - Canvas Reveal Effect (Blue/Purple) */}
+                <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[var(--stone-900)]">
+                  <CanvasRevealEffect
+                    animationSpeed={5}
+                    containerClassName="bg-transparent"
+                    colors={[
+                      [59, 130, 246], // Blue-500
+                      [139, 92, 246], // Violet-500
+                    ]}
+                    opacities={[0.2, 0.2, 0.2, 0.2, 0.2, 0.4, 0.4, 0.4, 0.4, 1]}
+                    dotSize={2}
+                  />
+                  {/* Radial gradient mask */}
+                  <div className="absolute inset-0 [mask-image:radial-gradient(400px_at_center,white,transparent)] bg-black/50 dark:bg-black/90" />
+                </div>
+
+                {/* Static Background (Ghost Hand) - Visible when not hovering */}
+                <div className="absolute inset-0 z-0 group-hover:opacity-0 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                  <svg className="w-64 h-64 text-[var(--stone-200)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                  </svg>
+                </div>
+
+                {/* Content */}
+                <div className="pointer-events-none z-10 flex flex-col gap-1 p-6 mt-auto transition-all duration-300 group-hover:-translate-y-2">
+                  <svg className="h-10 w-10 origin-left text-[var(--stone-400)] transition-all duration-300 ease-in-out group-hover:scale-75 mb-2 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+                  </svg>
+                  <h3 className="text-xl font-semibold text-[var(--stone-900)] group-hover:text-white" style={{ fontFamily: 'var(--font-heading)' }}>Ghost Overlay</h3>
+                  <p className="text-sm text-[var(--stone-500)] group-hover:text-[var(--stone-300)]">Follow semi-transparent expert overlays. Match your movements to the ghost teacher in real-time.</p>
+                </div>
+              </div>
+
+              {/* Card 4: Precision Scoring - spans 1 col, dark theme */}
+              <div className="group relative col-span-3 lg:col-span-1 flex flex-col justify-between overflow-hidden rounded-xl bg-[var(--stone-900)] border border-[var(--stone-800)] shadow-sm hover:shadow-lg transition-all duration-300">
+                {/* Background - Score meter */}
+                <div className="absolute inset-0 z-0">
+                  <div className="absolute top-10 right-0 left-0 flex items-center justify-center opacity-60 [mask-image:linear-gradient(to_top,transparent_40%,#000_100%)] transition-all duration-300 group-hover:opacity-100 group-hover:scale-110">
+                    <div className="relative w-32 h-32">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                        {/* Track */}
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+                        {/* Progress */}
+                        <circle
+                          cx="50" cy="50" r="40"
+                          fill="none"
+                          stroke="rgba(255,255,255,0.6)"
+                          strokeWidth="8"
+                          strokeDasharray="251"
+                          strokeDashoffset="63"
+                          strokeLinecap="round"
+                          className="transition-all duration-500 ease-out group-hover:stroke-emerald-400 group-hover:[filter:drop-shadow(0_0_8px_rgba(52,211,153,0.5))]"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center text-white text-2xl font-bold transition-all duration-300 group-hover:text-emerald-300 group-hover:scale-110">95</div>
+                    </div>
+                  </div>
+                </div>
+                {/* Content */}
+                <div className="pointer-events-none z-10 flex flex-col gap-1 p-6 mt-auto transition-all duration-300 group-hover:-translate-y-2">
+                  <svg className="h-10 w-10 origin-left text-[var(--stone-500)] transition-all duration-300 ease-in-out group-hover:scale-75 group-hover:text-white mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                  <h3 className="text-xl font-semibold text-white" style={{ fontFamily: 'var(--font-heading)' }}>Precision Scoring</h3>
+                  <p className="text-sm text-[var(--stone-400)]">Strict accuracy metrics. Gestures scored against expert recordings.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -496,26 +631,69 @@ export default function LandingPage() {
               </h2>
             </div>
 
-            <div className="relative">
-              {/* Connecting Line */}
-              <div className="absolute left-4 top-0 bottom-0 w-[1px] bg-[var(--stone-200)] hidden md:block" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+              {/* Left side - Timeline */}
+              <div className="relative">
+                {/* Connecting Line */}
+                <div className="absolute left-4 top-0 bottom-0 w-[1px] bg-[var(--stone-200)] hidden md:block" />
 
-              {steps.map((step, index) => (
-                <div key={index} className="relative pl-0 md:pl-16 py-8 grid grid-cols-1 md:grid-cols-3 gap-8 group step-timeline-item">
-                  <div className="step-timeline-dot hidden md:block" style={{ top: '3rem' }} />
-                  <div className="col-span-1">
-                    <span className="text-xs text-[var(--stone-400)] mb-2 block" style={{ fontFamily: 'var(--font-mono)' }}>
-                      {step.num} / {step.label}
-                    </span>
-                    <h3 className="text-xl font-normal" style={{ fontFamily: 'var(--font-heading)' }}>{step.title}</h3>
+                {steps.map((step, index) => (
+                  <div key={index} className="relative pl-0 md:pl-16 py-8 group step-timeline-item">
+                    <div className="step-timeline-dot hidden md:block" style={{ top: '2.5rem' }} />
+                    <div>
+                      <span className="text-xs text-[var(--stone-400)] mb-2 block" style={{ fontFamily: 'var(--font-mono)' }}>
+                        {step.num} / {step.label}
+                      </span>
+                      <h3 className="text-xl font-normal mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{step.title}</h3>
+                      <p className="text-sm text-[var(--stone-500)] max-w-md">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
-                  <div className="col-span-2 border-l border-[var(--stone-100)] pl-6 md:pl-0 md:border-none">
-                    <p className="text-sm text-[var(--stone-500)] max-w-md">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* Right side - Terminal Animation */}
+              <div className="sticky top-32">
+                <Terminal className="shadow-2xl">
+                  <TypingAnimation delay={500} duration={800}>
+                    {"> secondhand init --mode=asl"}
+                  </TypingAnimation>
+
+                  <AnimatedSpan delay={1500} className="text-emerald-400">
+                    ✔ Camera access granted
+                  </AnimatedSpan>
+
+                  <AnimatedSpan delay={2000} className="text-emerald-400">
+                    ✔ MediaPipe Hands initialized
+                  </AnimatedSpan>
+
+                  <AnimatedSpan delay={2500} className="text-emerald-400">
+                    ✔ Ghost overlay ready
+                  </AnimatedSpan>
+
+                  <AnimatedSpan delay={3000} className="text-emerald-400">
+                    ✔ AI coach connected
+                  </AnimatedSpan>
+
+                  <AnimatedSpan delay={3500} className="text-[var(--stone-400)]">
+                    <span className="block mt-2">Loading ASL pack...</span>
+                  </AnimatedSpan>
+
+                  <AnimatedSpan delay={4000} className="text-blue-400">
+                    <span className="block">ℹ 26 letters loaded</span>
+                    <span className="block pl-2 text-[var(--stone-500)]">- A-Z reference landmarks</span>
+                  </AnimatedSpan>
+
+                  <AnimatedSpan delay={4500} className="text-emerald-400">
+                    ✔ Session ready
+                  </AnimatedSpan>
+
+                  <TypingAnimation delay={5000} duration={600} className="text-[var(--stone-400)] mt-4">
+                    {"Ready to learn. Position your hands in frame."}
+                  </TypingAnimation>
+                </Terminal>
+              </div>
             </div>
           </div>
         </section>
@@ -685,9 +863,7 @@ export default function LandingPage() {
         <footer id="about" className="bg-[var(--stone-900)] text-[var(--stone-400)] py-24 px-12 lg:px-24">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1">
-              <div className="w-8 h-8 bg-white text-[var(--stone-900)] rounded-full flex items-center justify-center font-bold text-xs mb-6">
-                SH
-              </div>
+              <img src="/logo.png" alt="SecondHand" className="w-40 h-40 object-contain mb-6 invert mix-blend-screen" />
               <p className="text-xs text-[var(--stone-500)]">
                 Building the future of
                 <br />
@@ -732,7 +908,7 @@ export default function LandingPage() {
             <p>Made with care in Montreal</p>
           </div>
         </footer>
-      </div>
-    </main>
+      </div >
+    </main >
   );
 }
