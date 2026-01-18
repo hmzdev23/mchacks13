@@ -10,9 +10,10 @@ interface WordGridProps {
   onClose: () => void;
   onSelect: (wordId: string, wordName: string) => void;
   currentWord: string | null;
+  wordIds?: string[];
 }
 
-export function WordGrid({ isOpen, onClose, onSelect, currentWord }: WordGridProps) {
+export function WordGrid({ isOpen, onClose, onSelect, currentWord, wordIds }: WordGridProps) {
   const [words, setWords] = useState<LessonMeta[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +23,12 @@ export function WordGrid({ isOpen, onClose, onSelect, currentWord }: WordGridPro
     const loadWords = async () => {
       try {
         const pack = await loadPack("asl");
-        const wordLessons = pack.lessons.filter(lesson => lesson.type === 'word');
+        let wordLessons = pack.lessons.filter((lesson) => lesson.type === "word");
+        if (wordIds && wordIds.length > 0) {
+          const idSet = new Set(wordIds);
+          const byId = new Map(wordLessons.map((lesson) => [lesson.id, lesson]));
+          wordLessons = wordIds.map((id) => byId.get(id)).filter(Boolean) as LessonMeta[];
+        }
         setWords(wordLessons);
       } catch (err) {
         console.error("Failed to load words:", err);
@@ -32,7 +38,7 @@ export function WordGrid({ isOpen, onClose, onSelect, currentWord }: WordGridPro
     };
     
     loadWords();
-  }, [isOpen]);
+  }, [isOpen, wordIds]);
 
   return (
     <AnimatePresence>

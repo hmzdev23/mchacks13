@@ -17,10 +17,10 @@ import { useReferenceLandmarks } from "@/hooks/useReferenceLandmarks";
 import { LetterGrid } from "@/components/session/LetterGrid";
 import { WordGrid } from "@/components/session/WordGrid";
 import { PhraseInput } from "@/components/session/PhraseInput";
-import { useSessionStore } from "@/store/sessionStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { loadPack, loadLessonKeypoints } from "@/lib/packs/packLoader";
 import { LessonMeta, KeypointFrame } from "@/lib/packs/types";
+import { COMMON_WORD_IDS, getWordData, getWordImage } from "@/lib/aslWords";
 
 const JOINT_NAMES: Record<number, string> = {
   0: "wrist",
@@ -71,97 +71,161 @@ export function ASLMode({ className }: ASLModeProps) {
 
   // Pack data for words
   const [packLessons, setPackLessons] = useState<LessonMeta[]>([]);
-  const [wordKeypoints, setWordKeypoints] = useState<Point2D[] | null>(null);
-  const [wordKeypointsLoading, setWordKeypointsLoading] = useState(false);
+  const [packFps, setPackFps] = useState(30);
+  const [letterFrames, setLetterFrames] = useState<KeypointFrame[]>([]);
+  const [wordFrames, setWordFrames] = useState<KeypointFrame[]>([]);
+  const [wordFrameIndex, setWordFrameIndex] = useState(0);
 
   // Load pack on mount
   useEffect(() => {
     loadPack("asl").then(pack => {
       setPackLessons(pack.lessons);
+      setPackFps(pack.fps || 30);
     }).catch(err => console.error("Failed to load ASL pack:", err));
   }, []);
 
   // Fetch reference landmarks for letters
   const { landmarks: letterLandmarks, isLoading: isReferenceLoading } = useReferenceLandmarks(selectedLetter);
 
-  // Load word keypoints when a word is selected
+  const availableWordIds = useMemo(
+    () => COMMON_WORD_IDS.filter((id) => packLessons.some((lesson) => lesson.id === id)),
+    [packLessons]
+  );
+
   useEffect(() => {
-    if (contentType !== 'word' || !selectedWordId) {
-      setWordKeypoints(null);
-      return;
-    }
+    if (contentType !== "word" || selectedWordId) return;
+    const fallbackId =
+      availableWordIds[0] ||
+      packLessons.find((lesson) => lesson.type === "word")?.id ||
+      null;
+    if (!fallbackId) return;
+    const lesson = packLessons.find((item) => item.id === fallbackId);
+    const label = lesson?.name?.replace("Word ", "") || getWordData(fallbackId)?.label || fallbackId;
+    setSelectedWordId(fallbackId);
+    setSelectedWord(label);
+  }, [contentType, selectedWordId, availableWordIds, packLessons]);
 
-    const lesson = packLessons.find(l => l.id === selectedWordId);
-    if (!lesson) return;
-
-    setWordKeypointsLoading(true);
-    loadLessonKeypoints(lesson.keypoints_url)
-      .then((frames: KeypointFrame[]) => {
-        // Get first frame's right_hand keypoints (or left_hand as fallback)
-        const firstFrame = frames[0];
-        if (firstFrame?.right_hand) {
-          const points: Point2D[] = firstFrame.right_hand.map(([x, y]) => [x, y] as Point2D);
-          setWordKeypoints(points);
-        } else if (firstFrame?.left_hand) {
-          const points: Point2D[] = firstFrame.left_hand.map(([x, y]) => [x, y] as Point2D);
-          setWordKeypoints(points);
+  useEffect(() => {
+    let cancelled = false;
+    const loadLetterFrames = async () => {
+      if (!selectedLetter) return;
+      try {
+        const lessonId = `letter-${selectedLetter.toLowerCase()}`;
+        const frames = await loadLessonKeypoints(`/packs/asl/lessons/${lessonId}/keypoints.json`);
+        if (cancelled) return;
+        setLetterFrames(frames);
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("Failed to load letter keypoints, using fallback:", err);
+          setLetterFrames([]);
         }
-      })
-      .catch(err => console.error("Failed to load word keypoints:", err))
-      .finally(() => setWordKeypointsLoading(false));
-  }, [contentType, selectedWordId, packLessons]);
+      }
+    };
+    loadLetterFrames();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLetter]);
 
-  // Load phrase sequence keypoints
+  const activeWordLessonId = useMemo(() => {
+    if (contentType === "word") return selectedWordId;
+    if (contentType === "phrase") {
+      const currentLessonId = phraseSequence[phraseIndex];
+      if (currentLessonId && !currentLessonId.startsWith("letter-")) {
+        return currentLessonId;
+      }
+    }
+    return null;
+  }, [contentType, selectedWordId, phraseSequence, phraseIndex]);
+
   useEffect(() => {
-    if (contentType !== 'phrase' || phraseSequence.length === 0) return;
-
+    if (contentType !== "phrase" || phraseSequence.length === 0) return;
     const currentLessonId = phraseSequence[phraseIndex];
     if (!currentLessonId) return;
-
-    // Check if it's a letter lesson
-    if (currentLessonId.startsWith('letter-')) {
-      const letter = currentLessonId.replace('letter-', '').toUpperCase();
+    if (currentLessonId.startsWith("letter-")) {
+      const letter = currentLessonId.replace("letter-", "").toUpperCase();
       setSelectedLetter(letter);
-      setWordKeypoints(null);
+      setWordFrames([]);
+      setWordFrameIndex(0);
+    }
+  }, [contentType, phraseSequence, phraseIndex]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeWordLessonId) {
+      setWordFrames([]);
+      setWordFrameIndex(0);
       return;
     }
 
-    // Otherwise load word keypoints
-    const lesson = packLessons.find(l => l.id === currentLessonId);
+    const lesson = packLessons.find((l) => l.id === activeWordLessonId);
     if (!lesson) return;
 
-    setWordKeypointsLoading(true);
     loadLessonKeypoints(lesson.keypoints_url)
       .then((frames: KeypointFrame[]) => {
-        const firstFrame = frames[0];
-        if (firstFrame?.right_hand) {
-          const points: Point2D[] = firstFrame.right_hand.map(([x, y]) => [x, y] as Point2D);
-          setWordKeypoints(points);
-        } else if (firstFrame?.left_hand) {
-          const points: Point2D[] = firstFrame.left_hand.map(([x, y]) => [x, y] as Point2D);
-          setWordKeypoints(points);
-        }
+        if (cancelled) return;
+        setWordFrames(frames);
+        setWordFrameIndex(0);
       })
-      .catch(err => console.error("Failed to load phrase keypoints:", err))
-      .finally(() => setWordKeypointsLoading(false));
-  }, [contentType, phraseSequence, phraseIndex, packLessons]);
+      .catch((err) => console.error("Failed to load word keypoints:", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWordLessonId, packLessons]);
+
+  const currentWordFrame = useMemo(() => {
+    if (!wordFrames.length) return null;
+    const idx = wordFrameIndex % wordFrames.length;
+    return wordFrames[idx];
+  }, [wordFrames, wordFrameIndex]);
+
+  const wordKeypoints = useMemo(() => {
+    const frame = currentWordFrame;
+    if (!frame) return null;
+    const hand = frame.right_hand || frame.left_hand;
+    return hand ? hand.map(([x, y]) => [x, y] as Point2D) : null;
+  }, [currentWordFrame]);
+
+  const letterKeypoints = useMemo(() => {
+    const frame = letterFrames[0] ?? null;
+    const hand = frame?.right_hand || frame?.left_hand;
+    return hand ? hand.map(([x, y]) => [x, y] as Point2D) : null;
+  }, [letterFrames]);
+
+  useEffect(() => {
+    if (!activeWordLessonId || wordFrames.length === 0) return;
+    let rafId = 0;
+    const start = performance.now();
+    const fps = packFps || 30;
+    const tick = () => {
+      const elapsed = performance.now() - start;
+      const idx = Math.floor((elapsed * fps) / 1000) % wordFrames.length;
+      setWordFrameIndex(idx);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [activeWordLessonId, wordFrames, packFps]);
 
   // Get the active reference landmarks based on content type
   const referenceLandmarks = useMemo(() => {
+    let base = letterKeypoints ?? letterLandmarks;
     if (contentType === 'word' && wordKeypoints) {
-      return wordKeypoints;
+      base = wordKeypoints;
     }
     if (contentType === 'phrase') {
       const currentLessonId = phraseSequence[phraseIndex];
       if (currentLessonId?.startsWith('letter-')) {
-        return letterLandmarks;
-      }
-      if (wordKeypoints) {
-        return wordKeypoints;
+        base = letterKeypoints ?? letterLandmarks;
+      } else if (wordKeypoints) {
+        base = wordKeypoints;
       }
     }
-    return letterLandmarks;
-  }, [contentType, wordKeypoints, letterLandmarks, phraseSequence, phraseIndex]);
+    return addOuterPalmNode(base) ?? base;
+  }, [contentType, wordKeypoints, letterKeypoints, letterLandmarks, phraseSequence, phraseIndex]);
 
   // Hold Timer State
   const [holdProgress, setHoldProgress] = useState(0);
@@ -209,6 +273,9 @@ export function ASLMode({ className }: ASLModeProps) {
   }, [hands, referenceLandmarks]);
 
   const userHands = useMemo(() => hands.map((hand) => hand.points), [hands]);
+  const isLetterContext =
+    contentType === "letter" ||
+    (contentType === "phrase" && phraseSequence[phraseIndex]?.startsWith("letter-"));
 
   useEffect(() => {
     if (!hands.length) {
@@ -221,11 +288,14 @@ export function ASLMode({ className }: ASLModeProps) {
 
     const hand = hands[0];
     if (hand && hand.rawLandmarks) {
-      const fingerState = classifyFingerStates(hand.rawLandmarks);
-      const { accuracy: booleanAccuracy } = matchLetter(fingerState, selectedLetter);
       const geometricResult = scoringRef.current[hand.side].score(hand.points, ghostHands[0]);
       const geometricScore = geometricResult.overall;
-      const combinedScore = (booleanAccuracy * 0.7) + (geometricScore * 0.3);
+      let combinedScore = geometricScore;
+      if (isLetterContext) {
+        const fingerState = classifyFingerStates(hand.rawLandmarks);
+        const { accuracy: booleanAccuracy } = matchLetter(fingerState, selectedLetter);
+        combinedScore = (booleanAccuracy * 0.7) + (geometricScore * 0.3);
+      }
 
       setScore(combinedScore);
 
@@ -248,7 +318,7 @@ export function ASLMode({ className }: ASLModeProps) {
 
       setTopErrors(geometricResult.topJoints ?? []);
     }
-  }, [hands, ghostHands, selectedLetter, isCompleted]);
+  }, [hands, ghostHands, selectedLetter, isCompleted, isLetterContext]);
 
   const cue = useMemo(() => cueFromTopJoints(topErrors), [topErrors]);
 
@@ -333,10 +403,35 @@ export function ASLMode({ className }: ASLModeProps) {
     }
   };
 
+  const referenceImage = useMemo(() => {
+    if (contentType === "word") {
+      const data = getWordData(selectedWordId);
+      return {
+        src: data?.image || getWordImage(selectedWordId),
+        alt: data ? `ASL Word ${data.label}` : "ASL Word",
+      };
+    }
+    if (contentType === "phrase") {
+      const currentLessonId = phraseSequence[phraseIndex];
+      if (currentLessonId?.startsWith("letter-")) {
+        const letter = currentLessonId.replace("letter-", "").toUpperCase();
+        return { src: `/asl-images/${letter}.png`, alt: `ASL Letter ${letter}` };
+      }
+      if (currentLessonId) {
+        const data = getWordData(currentLessonId);
+        return {
+          src: data?.image || getWordImage(currentLessonId),
+          alt: data ? `ASL Word ${data.label}` : "ASL Word",
+        };
+      }
+    }
+    return { src: `/asl-images/${selectedLetter}.png`, alt: `ASL Letter ${selectedLetter}` };
+  }, [contentType, selectedWordId, selectedLetter, phraseSequence, phraseIndex]);
+
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
       {/* Header */}
-      <header className="flex justify-between items-center mb-6 flex-none pr-32">
+      <header className="flex flex-wrap justify-between items-center gap-4 mb-6 flex-none pr-56">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -358,6 +453,13 @@ export function ASLMode({ className }: ASLModeProps) {
                 }`}
             >
               Letters
+            </button>
+            <button
+              onClick={() => setContentType('word')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${contentType === 'word' ? 'bg-white shadow-sm text-[var(--stone-900)]' : 'text-[var(--stone-600)]'
+                }`}
+            >
+              Words
             </button>
             <button
               onClick={() => setContentType('phrase')}
@@ -458,6 +560,7 @@ export function ASLMode({ className }: ASLModeProps) {
             onClose={() => setIsWordGridOpen(false)}
             onSelect={handleWordSelect}
             currentWord={selectedWordId}
+            wordIds={COMMON_WORD_IDS}
           />
 
           <PhraseInput
@@ -489,8 +592,8 @@ export function ASLMode({ className }: ASLModeProps) {
             <div className="absolute top-4 right-4 w-32 h-32 rounded-xl overflow-hidden glass-panel border border-white/40 shadow-lg transition-opacity duration-300 hover:opacity-100 opacity-80 z-20">
               <div className="relative w-full h-full bg-white">
                 <Image
-                  src={`/asl-images/${selectedLetter}.png`}
-                  alt={`ASL Letter ${selectedLetter}`}
+                  src={referenceImage.src}
+                  alt={referenceImage.alt}
                   fill
                   className="object-contain p-2"
                 />

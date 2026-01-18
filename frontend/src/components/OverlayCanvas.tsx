@@ -40,6 +40,9 @@ const HAND_CONNECTIONS = [
   [5, 9],
   [9, 13],
   [13, 17],
+  [0, 21],
+  [17, 21],
+  [13, 21],
 ];
 
 export function OverlayCanvas({
