@@ -12,7 +12,8 @@ import { useVideoMetrics } from "@/hooks/useVideoMetrics";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { alignHands, Point2D } from "@/lib/cv/alignment";
 import { ScoringEngine } from "@/lib/cv/scoring";
-import { expertHandLeft, expertHandRight } from "@/lib/packs/sampleExpert";
+import { getExpertHand } from "@/lib/packs/alphabet";
+import { LetterGrid } from "@/components/session/LetterGrid";
 
 function cueFromTopJoints(top: number[]) {
   if (top.includes(8) || top.includes(12)) return "Open fingers slightly wider.";
@@ -26,6 +27,8 @@ export default function SessionPage() {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [score, setScore] = useState(0);
   const [topErrors, setTopErrors] = useState<number[]>([]);
+  const [selectedLetter, setSelectedLetter] = useState("A");
+  const [isGridOpen, setIsGridOpen] = useState(false);
   const scoringRef = useRef<{ Left: ScoringEngine; Right: ScoringEngine }>({
     Left: new ScoringEngine(),
     Right: new ScoringEngine(),
@@ -33,7 +36,7 @@ export default function SessionPage() {
 
   const { results, loading, ready, error } = useMediaPipe(videoRef.current, {
     swapHandedness: true,
-    minHandScore: 0.6,
+    minHandScore: 0.5,
   });
   const { width, height } = useElementSize(frameRef.current);
   const { width: videoWidth, height: videoHeight } = useVideoMetrics(videoRef.current);
@@ -55,12 +58,12 @@ export default function SessionPage() {
   }, [leftHand, rightHand, results]);
 
   const ghostHands = useMemo(() => {
-    // If no hands detected, show a static default ghost (Right hand) as a prompt
+    // If no hands detected, show the selected letter ghost
     if (hands.length === 0) {
-      return [expertHandRight];
+      return [getExpertHand(selectedLetter)];
     }
     return hands.map((hand) =>
-      alignHands(hand.side === "Left" ? expertHandLeft : expertHandRight, hand.points).alignedExpert
+      alignHands(getExpertHand(selectedLetter), hand.points).alignedExpert
     );
   }, [hands]);
   const userHands = useMemo(() => hands.map((hand) => hand.points), [hands]);
@@ -99,13 +102,33 @@ export default function SessionPage() {
               </p>
             </div>
             <h1 className="text-3xl text-[var(--stone-900)] tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 200 }}>
-              Ghost Overlay Practice
+              Practice Letter: <span className="font-semibold">{selectedLetter}</span>
             </h1>
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsGridOpen(true)}
+              className="group flex items-center gap-3 bg-[var(--stone-900)] text-white px-5 py-2.5 rounded-full hover:bg-[var(--stone-800)] transition-all shadow-md hover:shadow-lg active:scale-95"
+            >
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
+                {selectedLetter}
+              </div>
+              <span className="text-sm font-medium">Change Letter</span>
+              <svg className="w-4 h-4 text-white/60 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <LetterGrid
+              isOpen={isGridOpen}
+              onClose={() => setIsGridOpen(false)}
+              onSelect={setSelectedLetter}
+              currentLetter={selectedLetter}
+            />
+
             <Link href="/calibrate">
-              <button className="btn-secondary text-xs px-4 py-2">
+              <button className="btn-secondary text-xs px-4 py-2 opacity-60 hover:opacity-100 transition-opacity">
                 Recalibrate
               </button>
             </Link>
@@ -202,7 +225,7 @@ export default function SessionPage() {
 
             {/* AI Coach Widget - Grows to fill ALL remaining space */}
             <div className="glass-heavy rounded-2xl border border-white/50 shadow-lg relative overflow-hidden flex-1 min-h-[500px]">
-              <ElevenLabsWidget />
+              <ElevenLabsWidget feedback={`Score: ${Math.round(score)}%. Suggestion: ${cue}`} score={score} />
             </div>
 
             {/* Removed Tracking Stats to give more room to AI Widget (stats are redundant or can be moved if needed) */}

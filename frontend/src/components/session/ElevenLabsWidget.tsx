@@ -3,7 +3,16 @@
 
 import { useEffect } from "react";
 
-export function ElevenLabsWidget() {
+export function ElevenLabsWidget({ feedback, score }: { feedback?: string, score?: number }) {
+    useEffect(() => {
+        // Expose state to global window for potential AI Client Tools to read
+        // If the Agent is configured with a client tool "get_user_status", it could read this.
+        (window as any).secondHand = {
+            currentFeedback: feedback,
+            currentScore: score
+        };
+    }, [feedback, score]);
+
     useEffect(() => {
         const script = document.createElement("script");
         script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
